@@ -1,0 +1,9 @@
+.DS_Store
+.build/
+dist/
+DerivedData/
+Package.resolved
+*.xcodeproj
+*.xcworkspace
+*.swp
+*.tmp
