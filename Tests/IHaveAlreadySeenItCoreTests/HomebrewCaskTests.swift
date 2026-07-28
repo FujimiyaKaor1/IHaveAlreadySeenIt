@@ -2,8 +2,8 @@ import Foundation
 import Testing
 
 @Suite struct HomebrewCaskTests {
-    private let publishedVersion = "1.0.0"
-    private let publishedSHA256 = "56bec80c5810fc953ede9a786154a6939caf11b77e4c0c74f8c4512446c6ac60"
+    private let publishedVersion = "1.0.1"
+    private let publishedSHA256 = "7e1f2556dd6c0c5614eb338fb568d2dee998d3d433d757e5d2b9ca62049e3094"
 
     @Test
     func shippedCaskPinsThePublishedReleaseWithoutBypassingGatekeeper() throws {
@@ -157,6 +157,17 @@ import Testing
         #expect(!smokeTest.contains("killall"))
         #expect(!smokeTest.contains("no-quarantine"))
         #expect(!smokeTest.contains("brew tap-new"))
+    }
+
+    @Test
+    func packageAndReleaseWorkflowsExerciseThePackagedGUIResources() throws {
+        let packageScript = try contents("scripts/package-app.sh")
+        let releaseWorkflow = try contents(".github/workflows/release.yml")
+
+        #expect(packageScript.contains("APP_BUNDLE=\"$APP_RESOURCES/IHaveAlreadySeenIt_IHaveAlreadySeenItApp.bundle\""))
+        #expect(packageScript.contains("Contents/Resources/AppIcon.icns"))
+        #expect(releaseWorkflow.contains("test -d \"$MOUNT/IHaveAlreadySeenIt.app/Contents/Resources"))
+        #expect(releaseWorkflow.contains("scripts/test-app-launch.sh"))
     }
 
     private var repositoryRoot: URL {

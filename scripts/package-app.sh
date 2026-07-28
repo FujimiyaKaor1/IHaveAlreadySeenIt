@@ -23,7 +23,10 @@ swift build -c release --product ihavealreadyseenit
 BIN_DIR="$(swift build -c release --show-bin-path)"
 
 rm -rf "$APP"
-mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Helpers" "$APP/Contents/Resources"
+APP_RESOURCES="$APP/Contents/Resources"
+CORE_BUNDLE="$APP_RESOURCES/IHaveAlreadySeenIt_IHaveAlreadySeenItCore.bundle"
+APP_BUNDLE="$APP_RESOURCES/IHaveAlreadySeenIt_IHaveAlreadySeenItApp.bundle"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Helpers" "$APP_RESOURCES"
 sed -e "s/__VERSION__/$VERSION/g" -e "s/__BUILD_NUMBER__/$BUILD_NUMBER/g" \
     "$ROOT/Packaging/AppInfo.plist" > "$APP/Contents/Info.plist"
 install -m 755 "$BIN_DIR/IHaveAlreadySeenItApp" "$APP/Contents/MacOS/IHaveAlreadySeenItApp"
@@ -36,8 +39,17 @@ for bundle in \
         print -u2 "Missing SwiftPM resource bundle: $bundle"
         exit 1
     fi
-    ditto "$bundle" "$APP/Contents/Resources/${bundle:t}"
+    destination="$APP_RESOURCES/${bundle:t}"
+    ditto "$bundle" "$destination"
 done
+
+test -d "$CORE_BUNDLE"
+test -d "$APP_BUNDLE"
+test -f "$CORE_BUNDLE/AntiRevokeHook.c"
+test -f "$CORE_BUNDLE/IHaveAlreadySeenIt.entitlements"
+test -f "$APP_BUNDLE/CommunityBackground.jpg"
+test -f "$APP_BUNDLE/zh-Hans.lproj/Localizable.strings"
+test -f "$APP_BUNDLE/en.lproj/Localizable.strings"
 
 install -m 644 "$ROOT/Packaging/GeneratedIcons/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
 install -m 644 "$ROOT/Packaging/GeneratedIcons/AppIcon.png" "$APP/Contents/Resources/AppIcon.png"

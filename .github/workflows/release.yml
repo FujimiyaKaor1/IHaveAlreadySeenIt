@@ -32,7 +32,10 @@ jobs:
           test -L "$MOUNT/Applications"
           test -f "$MOUNT/首次使用说明.txt"
           test -f "$MOUNT/First Use.txt"
+          test -d "$MOUNT/IHaveAlreadySeenIt.app/Contents/Resources/IHaveAlreadySeenIt_IHaveAlreadySeenItApp.bundle"
+          test -d "$MOUNT/IHaveAlreadySeenIt.app/Contents/Resources/IHaveAlreadySeenIt_IHaveAlreadySeenItCore.bundle"
           codesign --verify --deep --strict "$MOUNT/IHaveAlreadySeenIt.app"
+          scripts/test-app-launch.sh "$MOUNT/IHaveAlreadySeenIt.app"
           hdiutil detach -quiet "$MOUNT"
       - name: Create draft GitHub Release
         env:

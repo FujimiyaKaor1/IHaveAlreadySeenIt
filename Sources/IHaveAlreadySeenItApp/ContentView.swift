@@ -288,7 +288,7 @@ private struct CommunityBackground: View {
     var body: some View {
         ZStack {
             WindowGlassView()
-            if let url = Bundle.module.url(
+            if let url = AppResourceBundle.bundle.url(
                 forResource: "CommunityBackground",
                 withExtension: "jpg"
             ), let image = NSImage(contentsOf: url) {
