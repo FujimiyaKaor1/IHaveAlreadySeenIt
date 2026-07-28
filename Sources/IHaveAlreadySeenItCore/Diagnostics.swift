@@ -192,6 +192,25 @@ public struct InstallationPaths: Sendable {
     }
 }
 
+public enum AppMutationBackend: Equatable, Sendable {
+    case readOnly
+    case localDevelopment
+    case privilegedHelper
+
+    public static func resolve(
+        localDevelopmentEnabled: Bool,
+        signedHelperAvailable: Bool
+    ) -> AppMutationBackend {
+        if signedHelperAvailable { return .privilegedHelper }
+        if localDevelopmentEnabled { return .localDevelopment }
+        return .readOnly
+    }
+
+    public var allowsMutatingOperations: Bool {
+        self != .readOnly
+    }
+}
+
 public struct UserActionPolicy: Equatable, Sendable {
     public let canInspect: Bool
     public let canPlan: Bool

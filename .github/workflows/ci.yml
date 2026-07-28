@@ -20,15 +20,18 @@ jobs:
         run: scripts/coverage.sh
       - name: Release build
         run: swift build -c release
-      - name: Package unsigned preview
+      - name: Package Community app
         run: scripts/package-app.sh
       - name: Validate package resources
         run: |
           plutil -lint dist/IHaveAlreadySeenIt.app/Contents/Info.plist
-          test -f dist/IHaveAlreadySeenIt.app/IHaveAlreadySeenIt_IHaveAlreadySeenItCore.bundle/AntiRevokeHook.c
-          test -f dist/IHaveAlreadySeenIt.app/IHaveAlreadySeenIt_IHaveAlreadySeenItCore.bundle/IHaveAlreadySeenIt.entitlements
+          test -f dist/IHaveAlreadySeenIt.app/Contents/Resources/IHaveAlreadySeenIt_IHaveAlreadySeenItCore.bundle/AntiRevokeHook.c
+          test -f dist/IHaveAlreadySeenIt.app/Contents/Resources/IHaveAlreadySeenIt_IHaveAlreadySeenItCore.bundle/IHaveAlreadySeenIt.entitlements
+          test -x dist/IHaveAlreadySeenIt.app/Contents/Helpers/ihavealreadyseenit
+          test -f dist/IHaveAlreadySeenIt.app/Contents/Resources/AppIcon.icns
           test ! -e dist/IHaveAlreadySeenIt.app/Contents/Library/LaunchServices/IHaveAlreadySeenItPrivilegedHelper
           test ! -e dist/IHaveAlreadySeenIt.app/Contents/Library/LaunchDaemons/io.github.fujimiyakaor1.IHaveAlreadySeenIt.PrivilegedHelper.plist
+          codesign --verify --deep --strict --verbose=2 dist/IHaveAlreadySeenIt.app
       - name: Diff and secret checks
         run: |
           git diff --check

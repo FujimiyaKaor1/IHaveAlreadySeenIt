@@ -68,7 +68,7 @@ enum CLIError: Error {
 
 func printHelp() {
     print("""
-    IHaveAlreadySeenIt 0.2.0 - local, source-built macOS WeChat anti-revoke tool
+    IHaveAlreadySeenIt 1.0.0 Community - local macOS WeChat anti-revoke tool
 
     Usage:
       ihavealreadyseenit inspect [--app PATH]

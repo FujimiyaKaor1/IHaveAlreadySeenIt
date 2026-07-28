@@ -3,6 +3,30 @@ import Testing
 
 @Suite struct UserActionPolicyTests {
     @Test
+    func selectsAnExplicitLocalDevelopmentBackendWithoutAHelper() {
+        #expect(AppMutationBackend.resolve(
+            localDevelopmentEnabled: true,
+            signedHelperAvailable: false
+        ) == .localDevelopment)
+    }
+
+    @Test
+    func keepsStandardUnsignedBuildsReadOnly() {
+        #expect(AppMutationBackend.resolve(
+            localDevelopmentEnabled: false,
+            signedHelperAvailable: false
+        ) == .readOnly)
+    }
+
+    @Test
+    func prefersTheSignedHelperWhenItIsAvailable() {
+        #expect(AppMutationBackend.resolve(
+            localDevelopmentEnabled: true,
+            signedHelperAvailable: true
+        ) == .privilegedHelper)
+    }
+
+    @Test
     func enablesInstallOnlyForASafeIdleReport() {
         let policy = UserActionPolicy(report: makeReport(), isBusy: false)
 

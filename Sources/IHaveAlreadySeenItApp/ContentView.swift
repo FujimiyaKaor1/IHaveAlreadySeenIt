@@ -3,213 +3,304 @@ import SwiftUI
 
 struct ContentView: View {
     @Bindable var viewModel: AppViewModel
+    @AppStorage("hasCompletedCommunityOnboarding") private var hasCompletedOnboarding = false
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorSchemeContrast) private var contrast
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            header
-            applicationPicker
-            statusCard
-            Spacer(minLength: 0)
-            actionBar
+        ZStack {
+            CommunityBackground(
+                reduceMotion: reduceMotion,
+                reduceTransparency: reduceTransparency
+            )
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    header
+                    hero
+                    detailsCard
+                    footer
+                }
+                .padding(28)
+            }
+            .safeAreaPadding(.top, 24)
         }
-        .padding(24)
+        .frame(minWidth: 720, minHeight: 600)
         .task { viewModel.refresh() }
-        .alert("安装前请确认", isPresented: $viewModel.isShowingInstallConfirmation) {
-            Button("取消", role: .cancel) {}
-            Button("我理解风险，继续", role: .destructive) { viewModel.install() }
-        } message: {
-            Text("安装会修改微信主程序并破坏腾讯原始代码签名，可能影响更新、企业安全软件或账号风控。")
-        }
-        .alert("恢复原版微信", isPresented: $viewModel.isShowingRestoreConfirmation) {
-            Button("取消", role: .cancel) {}
-            Button("恢复", role: .destructive) { viewModel.restore() }
-        } message: {
-            Text("将使用经过官方签名验证的备份替换当前微信。")
-        }
-        .alert("操作未完成", isPresented: Binding(
-            get: { viewModel.errorMessage != nil },
-            set: { if !$0 { viewModel.errorMessage = nil } }
-        )) {
-            Button("好") { viewModel.errorMessage = nil }
-        } message: {
-            Text(viewModel.errorMessage ?? "未知错误")
-        }
+        .sheet(isPresented: Binding(
+            get: { !hasCompletedOnboarding },
+            set: { if !$0 { hasCompletedOnboarding = true } }
+        )) { onboarding }
+        .sheet(isPresented: $viewModel.isShowingInstallConfirmation) { installConfirmation }
+        .sheet(isPresented: $viewModel.isShowingAdministratorInstructions) { administratorSheet }
         .sheet(isPresented: Binding(
             get: { viewModel.planText != nil },
             set: { if !$0 { viewModel.planText = nil } }
-        )) {
-            planSheet
+        )) { planSheet }
+        .confirmationDialog(
+            L10n.text("action.restore"),
+            isPresented: $viewModel.isShowingRestoreConfirmation
+        ) {
+            Button(L10n.text("action.restore"), role: .destructive) { viewModel.restore() }
+            Button(L10n.text("action.cancel"), role: .cancel) {}
         }
+        .alert(L10n.text("error.title"), isPresented: Binding(
+            get: { viewModel.errorMessage != nil },
+            set: { if !$0 { viewModel.errorMessage = nil } }
+        )) {
+            Button("OK") { viewModel.errorMessage = nil }
+        } message: { Text(viewModel.errorMessage ?? "") }
+    }
+
+    private var presentation: CommunityHomePresentation {
+        CommunityHomePresentation(
+            report: viewModel.report,
+            isBusy: viewModel.isBusy,
+            backend: viewModel.mutationBackend,
+            hasRecoverableBackupWithoutApplication: viewModel.hasRecoverableBackupWithoutApplication
+        )
     }
 
     private var header: some View {
-        HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 5) {
-                Text("IHaveAlreadySeenIt")
-                    .font(.largeTitle.bold())
-                Text("本地、源码可审计的 macOS 微信防撤回实验工具")
-                    .foregroundStyle(.secondary)
+        HStack(spacing: 14) {
+            if let url = Bundle.module.url(forResource: "AppIcon", withExtension: "png"),
+               let image = NSImage(contentsOf: url) {
+                Image(nsImage: image)
+                    .resizable().scaledToFill().frame(width: 66, height: 66)
+                    .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+                    .shadow(color: .pink.opacity(0.15), radius: 10, y: 4)
+            }
+            VStack(alignment: .leading, spacing: 3) {
+                Text("IHaveAlreadySeenIt").font(.title.bold())
+                Text(L10n.text("app.subtitle")).foregroundStyle(.secondary)
             }
             Spacer()
-            if viewModel.isBusy {
-                HStack(spacing: 8) {
-                    ProgressView().controlSize(.small)
-                    Text(viewModel.currentStage.map(stageText) ?? "正在检查…")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+            Menu {
+                Button(L10n.text("action.recheck"), systemImage: "arrow.clockwise") { viewModel.refresh() }
+                Button(L10n.text("action.choose"), systemImage: "folder") { viewModel.chooseApplication() }
+                Button(L10n.text("action.plan"), systemImage: "list.clipboard") { viewModel.preparePlan() }
+                    .disabled(viewModel.report == nil)
+                Divider()
+                Button(L10n.text("action.copyDiagnostics"), systemImage: "doc.on.doc") { viewModel.copyDiagnostics() }
+                    .disabled(viewModel.report == nil)
+            } label: {
+                Label(L10n.text("menu.more"), systemImage: "ellipsis.circle")
+            }
+            .menuStyle(.borderlessButton)
+            .fixedSize()
+        }
+    }
+
+    private var hero: some View {
+        HStack(spacing: 22) {
+            ZStack {
+                Circle().fill(statusColor.opacity(0.14)).frame(width: 72, height: 72)
+                Image(systemName: statusSymbol).font(.system(size: 30, weight: .semibold)).foregroundStyle(statusColor)
+            }
+            VStack(alignment: .leading, spacing: 7) {
+                Text(statusTitle).font(.system(size: 28, weight: .bold, design: .rounded))
+                Text(statusDetail).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                if viewModel.operationSucceeded, presentation.status == .installed {
+                    Button(L10n.text("action.launch"), systemImage: "play.fill") { viewModel.launchWeChat() }
+                        .buttonStyle(.link)
+                }
+                if viewModel.isBusy {
+                    ProgressView(value: stageProgress).tint(statusColor).padding(.top, 4)
+                    Text(stageText(viewModel.currentStage ?? .validating)).font(.caption).foregroundStyle(.secondary)
                 }
             }
+            Spacer(minLength: 16)
+            Button(primaryTitle) { performPrimaryAction() }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .tint(statusColor)
+                .disabled(!presentation.isPrimaryEnabled)
         }
+        .communityCard(solid: useSolidCards)
     }
 
-    private var applicationPicker: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "app.dashed")
-                .foregroundStyle(.secondary)
-            Text(viewModel.appURL.path)
-                .lineLimit(1)
-                .truncationMode(.middle)
-                .textSelection(.enabled)
-            Spacer()
-            Button("选择微信…") { viewModel.chooseApplication() }
-            Button("重新检查") { viewModel.refresh() }
-                .disabled(viewModel.isBusy)
-        }
-        .cardStyle()
-    }
-
-    @ViewBuilder
-    private var statusCard: some View {
-        if let report = viewModel.report {
-            Grid(alignment: .leading, horizontalSpacing: 20, verticalSpacing: 12) {
-                statusRow("微信版本", "\(report.version) (\(report.build))")
-                statusRow("架构", report.architectures.joined(separator: ", "))
-                statusRow("官方签名", report.codeSignature.displayName)
-                statusRow("兼容状态", compatibilityText(report.compatibility))
-                statusRow("安装状态", installationText(report.installation))
-                statusRow("备份状态", backupText(report.backup))
-                statusRow("安全门", safetyGateText(report))
+    @ViewBuilder private var detailsCard: some View {
+        VStack(alignment: .leading, spacing: 15) {
+            Label(L10n.text("card.wechat"), systemImage: "checkmark.shield").font(.headline)
+            if let report = viewModel.report {
+                DetailRow(label: L10n.text("field.path"), value: report.applicationPath)
+                Divider()
+                HStack(alignment: .top, spacing: 28) {
+                    VStack(spacing: 11) {
+                        DetailRow(label: L10n.text("field.version"), value: "\(report.version) (\(report.build))")
+                        DetailRow(label: L10n.text("field.arch"), value: report.architectures.joined(separator: ", "))
+                    }
+                    VStack(spacing: 11) {
+                        DetailRow(label: L10n.text("field.signature"), value: report.codeSignature.displayName)
+                        DetailRow(label: L10n.text("field.compatibility"), value: compatibilityText(report.compatibility))
+                        DetailRow(label: L10n.text("field.backup"), value: backupText(report.backup))
+                    }
+                }
+            } else {
+                ContentUnavailableView(
+                    L10n.text("empty.title"), systemImage: "shield.lefthalf.filled",
+                    description: Text(L10n.text("empty.detail"))
+                ).frame(maxWidth: .infinity)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .cardStyle()
-        } else if !viewModel.isBusy {
-            ContentUnavailableView(
-                "尚无检查结果",
-                systemImage: "shield.lefthalf.filled",
-                description: Text("选择微信后运行只读检查。")
-            )
-            .frame(maxWidth: .infinity)
         }
+        .communityCard(solid: useSolidCards)
     }
 
-    private var actionBar: some View {
-        let policy = UserActionPolicy(
-            report: viewModel.report,
-            isBusy: viewModel.isBusy,
-            hasRecoverableBackupWithoutApplication: viewModel.hasRecoverableBackupWithoutApplication,
-            allowsMutatingOperations: viewModel.allowsPrivilegedOperations
-        )
-        return HStack {
-            Button("复制诊断报告") { viewModel.copyDiagnostics() }
-                .disabled(viewModel.report == nil)
-            Button("查看安装计划") { viewModel.preparePlan() }
-                .disabled(!policy.canPlan)
+    private var footer: some View {
+        HStack {
+            Label("Community 1.0 · macOS 14+", systemImage: "lock.shield")
             Spacer()
-            Button("恢复原版") { viewModel.isShowingRestoreConfirmation = true }
-                .disabled(!policy.canRestore)
-            Button("安装", role: .destructive) {
-                viewModel.isShowingInstallConfirmation = true
+            Text("No telemetry · GPL-3.0")
+        }.font(.caption).foregroundStyle(.secondary).padding(.horizontal, 4)
+    }
+
+    private var onboarding: some View {
+        VStack(spacing: 22) {
+            if let url = Bundle.module.url(forResource: "AppIcon", withExtension: "png"), let image = NSImage(contentsOf: url) {
+                Image(nsImage: image).resizable().scaledToFit().frame(width: 110, height: 110)
+                    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
             }
-            .buttonStyle(.borderedProminent)
-            .disabled(!policy.canInstall)
-        }
+            Text(L10n.text("onboarding.title")).font(.largeTitle.bold())
+            OnboardingRow(symbol: "checkmark.seal", text: L10n.text("onboarding.support"))
+            OnboardingRow(symbol: "hand.raised", text: L10n.text("onboarding.privacy"))
+            OnboardingRow(symbol: "arrow.counterclockwise", text: L10n.text("onboarding.backup"))
+            Button(L10n.text("onboarding.start")) { hasCompletedOnboarding = true }
+                .buttonStyle(.borderedProminent).controlSize(.large).tint(.pink)
+        }.padding(36).frame(width: 540)
+    }
+
+    private var installConfirmation: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            Text(L10n.text("risk.title")).font(.title.bold())
+            RiskRow(symbol: "externaldrive.badge.checkmark", text: L10n.text("risk.backup"))
+            RiskRow(symbol: "signature", text: L10n.text("risk.signature"))
+            RiskRow(symbol: "exclamationmark.shield", text: L10n.text("risk.account"))
+            RiskRow(symbol: "power", text: L10n.text("risk.quit"))
+            HStack {
+                Button(L10n.text("action.cancel"), role: .cancel) { viewModel.isShowingInstallConfirmation = false }
+                Spacer()
+                Button(L10n.text("action.continue"), role: .destructive) {
+                    viewModel.isShowingInstallConfirmation = false
+                    viewModel.install()
+                }.buttonStyle(.borderedProminent).tint(.pink)
+            }
+        }.padding(30).frame(width: 580)
+    }
+
+    private var administratorSheet: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Label(L10n.text("admin.title"), systemImage: "lock.shield").font(.title.bold())
+            Text(L10n.text("admin.detail")).foregroundStyle(.secondary)
+            Text(L10n.text("admin.command")).font(.headline)
+            Text(viewModel.administratorCommand ?? "")
+                .font(.system(.caption, design: .monospaced)).textSelection(.enabled)
+                .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color(nsColor: .textBackgroundColor)).clipShape(RoundedRectangle(cornerRadius: 10))
+            HStack {
+                Button(L10n.text("action.doneRecheck")) {
+                    viewModel.isShowingAdministratorInstructions = false; viewModel.refresh()
+                }
+                Spacer()
+                Button(L10n.text("action.copyTerminal")) { viewModel.copyAdministratorCommandAndOpenTerminal() }
+                    .buttonStyle(.borderedProminent).tint(.pink)
+            }
+        }.padding(30).frame(width: 650)
     }
 
     private var planSheet: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("只读安装计划").font(.title2.bold())
-            Text(viewModel.planText ?? "")
-                .textSelection(.enabled)
-            HStack {
-                Spacer()
-                Button("关闭") { viewModel.planText = nil }
-                    .keyboardShortcut(.defaultAction)
+            Text(L10n.text("plan.title")).font(.title2.bold())
+            Text(viewModel.planText ?? "").textSelection(.enabled)
+            HStack { Spacer(); Button(L10n.text("action.close")) { viewModel.planText = nil }.keyboardShortcut(.defaultAction) }
+        }.padding(26).frame(width: 600)
+    }
+
+    private var useSolidCards: Bool { reduceTransparency || contrast == .increased }
+    private var statusColor: Color {
+        switch presentation.status { case .readyToInstall: .pink; case .installed: .green; case .needsAttention: .orange; case .working: .blue }
+    }
+    private var statusSymbol: String {
+        switch presentation.status { case .readyToInstall: "sparkles"; case .installed: "checkmark.shield.fill"; case .needsAttention: "exclamationmark.triangle.fill"; case .working: "hourglass" }
+    }
+    private var statusTitle: String {
+        switch presentation.status { case .readyToInstall: L10n.text("status.ready"); case .installed: L10n.text("status.installed"); case .needsAttention: L10n.text("status.attention"); case .working: L10n.text("status.working") }
+    }
+    private var statusDetail: String { L10n.text("status.\(presentation.status == .readyToInstall ? "ready" : presentation.status == .installed ? "installed" : presentation.status == .needsAttention ? "attention" : "working").detail") }
+    private var primaryTitle: String {
+        switch presentation.primaryAction { case .install: L10n.text("action.install"); case .restore: L10n.text("action.restore"); case .recheck: L10n.text("action.recheck") }
+    }
+    private func performPrimaryAction() {
+        switch presentation.primaryAction { case .install: viewModel.isShowingInstallConfirmation = true; case .restore: viewModel.isShowingRestoreConfirmation = true; case .recheck: viewModel.refresh() }
+    }
+    private var stageProgress: Double {
+        guard let stage = viewModel.currentStage, let index = InstallationStage.allCases.firstIndex(of: stage) else { return 0 }
+        return Double(index + 1) / Double(InstallationStage.allCases.count)
+    }
+    private func stageText(_ stage: InstallationStage) -> String { L10n.text("progress.\(stage.rawValue)") }
+    private func compatibilityText(_ value: CompatibilityDiagnostic) -> String { switch value { case .supported: L10n.text("value.supported"); case .unknownHash: L10n.text("value.unknownHash"); case .unsupportedVersion: L10n.text("value.unsupported") } }
+    private func backupText(_ value: BackupDiagnostic) -> String { switch value { case .present: L10n.text("value.backupPresent"); case .missing: L10n.text("value.backupMissing"); case .invalid: L10n.text("value.backupInvalid") } }
+}
+
+private struct CommunityBackground: View {
+    let reduceMotion: Bool
+    let reduceTransparency: Bool
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var drifting = false
+    var body: some View {
+        ZStack {
+            WindowGlassView()
+            if let url = Bundle.module.url(
+                forResource: "CommunityBackground",
+                withExtension: "jpg"
+            ), let image = NSImage(contentsOf: url) {
+                Image(nsImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .opacity(reduceTransparency ? 0.13 : 0.90)
+                    .clipped()
             }
-        }
-        .padding(24)
-        .frame(width: 560)
-    }
-
-    private func statusRow(_ title: String, _ value: String) -> some View {
-        GridRow {
-            Text(title).foregroundStyle(.secondary)
-            Text(value).textSelection(.enabled)
-        }
-    }
-
-    private func compatibilityText(_ value: CompatibilityDiagnostic) -> String {
-        switch value {
-        case .supported: return "已验证"
-        case .unknownHash: return "哈希未知"
-        case .unsupportedVersion: return "版本不支持"
-        }
-    }
-
-    private func installationText(_ value: InstallationDiagnostic) -> String {
-        switch value {
-        case .notInstalled: return "未安装"
-        case .installed(let architectures): return "已安装（\(architectures.joined(separator: ", "))）"
-        case .partiallyInstalled(let architectures):
-            return "不完整安装（\(architectures.joined(separator: ", "))）"
-        }
-    }
-
-    private func backupText(_ value: BackupDiagnostic) -> String {
-        switch value {
-        case .missing: return "无"
-        case .present: return "官方签名备份可用"
-        case .invalid: return "备份无效"
-        }
-    }
-
-    private func safetyGateText(_ report: DiagnosticReport) -> String {
-        guard viewModel.allowsPrivilegedOperations else {
-            return "只读预览（禁止变更）"
-        }
-        return report.isSafeToInstall ? "可以安装" : "禁止安装"
-    }
-
-    private func stageText(_ stage: InstallationStage) -> String {
-        switch stage {
-        case .validating: return "正在验证…"
-        case .backingUp: return "正在备份…"
-        case .staging: return "正在准备副本…"
-        case .injecting: return "正在注入…"
-        case .signing: return "正在签名…"
-        case .verifying: return "正在复核…"
-        case .replacing: return "正在替换应用…"
-        case .writingState: return "正在保存状态…"
-        case .completed: return "已完成"
-        case .rollingBack: return "正在恢复原版…"
+            Rectangle()
+                .fill(reduceTransparency
+                    ? AnyShapeStyle(Color(nsColor: .windowBackgroundColor).opacity(0.88))
+                    : AnyShapeStyle(.ultraThinMaterial))
+                .opacity(reduceTransparency ? 1 : 0.42)
+            Rectangle()
+                .fill(colorScheme == .dark ? Color.black.opacity(0.13) : Color.white.opacity(0.08))
+            Circle().fill(.pink.opacity(0.055)).frame(width: 360).blur(radius: 86).offset(x: drifting ? 260 : 210, y: drifting ? -230 : -180)
+        }.ignoresSafeArea().onAppear {
+            guard !reduceMotion else { return }
+            withAnimation(.easeInOut(duration: 7).repeatForever(autoreverses: true)) { drifting = true }
         }
     }
 }
 
-private struct CardModifier: ViewModifier {
-    func body(content: Content) -> some View {
-        content
-            .padding(16)
-            .background(.regularMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(.quaternary)
-            }
+private struct WindowGlassView: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = ConfiguringVisualEffectView()
+        view.material = .underWindowBackground
+        view.blendingMode = .behindWindow
+        view.state = .active
+        return view
+    }
+
+    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {}
+}
+
+private final class ConfiguringVisualEffectView: NSVisualEffectView {
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        window?.isOpaque = false
+        window?.backgroundColor = .clear
+        window?.titlebarAppearsTransparent = true
+        window?.titleVisibility = .hidden
     }
 }
 
+private struct DetailRow: View { let label: String; let value: String; var body: some View { HStack(alignment: .firstTextBaseline) { Text(label).foregroundStyle(.secondary); Spacer(minLength: 12); Text(value).lineLimit(1).truncationMode(.middle).textSelection(.enabled) } } }
+private struct RiskRow: View { let symbol: String; let text: String; var body: some View { HStack(alignment: .top, spacing: 12) { Image(systemName: symbol).foregroundStyle(.pink).frame(width: 24); Text(text).fixedSize(horizontal: false, vertical: true) } } }
+private struct OnboardingRow: View { let symbol: String; let text: String; var body: some View { HStack(spacing: 14) { Image(systemName: symbol).font(.title2).foregroundStyle(.pink).frame(width: 30); Text(text); Spacer() }.padding(.horizontal, 12) } }
 private extension View {
-    func cardStyle() -> some View {
-        modifier(CardModifier())
+    func communityCard(solid: Bool) -> some View {
+        padding(20).background { RoundedRectangle(cornerRadius: 20, style: .continuous).fill(solid ? AnyShapeStyle(Color(nsColor: .controlBackgroundColor)) : AnyShapeStyle(.regularMaterial)).shadow(color: .black.opacity(0.06), radius: 18, y: 8) }.overlay { RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(.white.opacity(0.18)) }
     }
 }

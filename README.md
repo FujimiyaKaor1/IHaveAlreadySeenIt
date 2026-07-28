@@ -1,145 +1,105 @@
 # IHaveAlreadySeenIt
 
-IHaveAlreadySeenIt 是一个本地、源码可审计的 macOS 微信防撤回实验工具。它不是微信官方插件，而是一个严格锁定版本的本地补丁管理器。它结合了两类思路：
+IHaveAlreadySeenIt 是一个免费、开源、仅在本机运行的 macOS 微信防撤回补丁管理器。Community 1.0 提供面向普通用户的 SwiftUI 图形界面，同时保留可审计 CLI、严格版本白名单、完整备份与事务回滚。
 
-- 使用版本、build、SHA-256 和机器码特征进行严格匹配，并提供完整备份与恢复。
-- 在 macOS 上从源码编译一个极小动态库，通过 `LC_LOAD_DYLIB` 加载后在内存中关闭撤回判断。
+> 它不是微信官方插件。修改客户端可能产生兼容性、更新或账号风险，请在理解风险后自行决定是否使用。
 
-当前规则仅允许本机已检查的微信 `4.1.7 (34371)`，可执行文件 SHA-256：
+## 下载与首次打开
 
-```text
-764966cdaaf945bc8b23968bb7b3dca3cdc4067e2891a38e28c7556788e0682c
-```
+Community Build 只通过 GitHub Releases 提供 DMG、源码和 SHA-256，不使用 App Store、Homebrew、Apple Developer Program 或公证。
 
-其他版本、build 或哈希会默认拒绝安装。不要为了绕过检查而随意添加未知哈希。
+1. 下载 `IHaveAlreadySeenIt-1.0.0-Community.dmg` 并核对 SHA-256。
+2. 将 App 拖入 Applications。
+3. 第一次启动时，在 Finder 中右键 App，选择“打开”。
+4. 按首页唯一的主按钮操作；如果 `/Applications` 需要管理员权限，GUI 会复制固定命令并打开终端，由你检查后输入 macOS 密码。
 
-## 隐私边界
+不要关闭 Gatekeeper 或 SIP，不要执行 `xattr` 绕过命令，也不要运行 `curl | sh` 一类远程脚本。
 
-IHaveAlreadySeenIt：
+## 界面
 
-- 不访问网络，也没有遥测或自动更新。
-- 不安装 LaunchAgent，不常驻后台。
-- 不使用 LLDB，不附加微信进程。
-- 不读取聊天数据库、消息正文、联系人或登录账号。
-- 不包含预编译注入器；hook 在安装时由本机 `clang` 从源码编译。
-- 日志只写 hook 是否成功到 `/tmp/ihavealreadyseenit-hook.log`。
+![IHaveAlreadySeenIt Community 界面](Documentation/community-1.0.png)
 
-## 仍然存在的风险
-
-安装会修改 `/Applications/WeChat.app` 的主程序、加入动态库并进行 ad-hoc 重签名。这会破坏腾讯原始代码签名，可能触发 macOS、微信更新器、企业安全软件或账号风控。微信更新后补丁通常会失效。
-
-当前 hook 把匹配到的撤回判断固定为 false，因此“自己撤回”在本机的显示也可能与官方客户端不同。服务端行为不由本工具控制。
-
-本项目不会自动修改真实微信。请先运行只读检查和预演，并自行决定是否接受风险。
+GUI 支持简体中文和英文，会跟随系统语言。浅色、深色、降低透明度、高对比度与减少动态效果均使用系统无障碍设置。
 
 ## 支持状态
 
-| 微信版本 | Build | 架构 | 状态 |
-|---|---:|---|---|
-| 4.1.7 | 34371 | arm64 + x86_64 | 已验证 |
+| 微信版本 | Build | 架构 | 官方主程序 SHA-256 | 状态 |
+|---|---:|---|---|---|
+| 4.1.7 | 34371 | arm64 + x86_64 | `764966cdaaf945bc8b23968bb7b3dca3cdc4067e2891a38e28c7556788e0682c` | 已验证 |
 
-其他版本、Build、哈希或架构会安全拒绝，不会尝试模糊匹配。
+其他版本、Build、哈希或架构会安全拒绝，不进行模糊匹配。增加新版本必须重新提供官方样本证据、双架构唯一特征和安装/恢复验证。
 
-## 构建
+## 隐私与安全边界
 
-需要 macOS 14 或更高版本，以及 Xcode Command Line Tools：
+- 不访问网络、无遥测、无自动上传、无自动更新。
+- 不读取聊天数据库、消息正文、联系人或登录账号。
+- 不安装后台常驻项，不附加微信进程。
+- hook 在安装时由本机 `clang` 从仓库中的极小 C 源码编译。
+- Community App 不包含、不安装、不注册 Privileged Helper。
+- 权限不足时仅生成内嵌 CLI 的 `install` 或 `uninstall` 固定命令；路径会标准化并进行严格 shell 转义。
+- 安装前验证 Bundle ID、腾讯 Team ID `5A4RE8SF68`、版本、Build、SHA-256、架构和唯一特征；任一条件不符即停止。
+- 安装事务包含备份、暂存、注入、签名、验证、替换和状态写入；失败时自动回滚。
+
+修改后的微信使用 ad-hoc 签名，不再保有腾讯原始代码签名。完整官方备份位于目标 App 旁的 `.IHaveAlreadySeenItBackup`，恢复操作会重新验证该备份。
+
+## 从源码构建
+
+要求 macOS 14+ 和 Xcode Command Line Tools：
 
 ```bash
 xcode-select --install
 make test
-make build
-scripts/package-app.sh
+make coverage
+make app
+make install-local
 ```
 
-CLI 位于 `.build/release/ihavealreadyseenit`。未配置 Developer ID 时，`scripts/package-app.sh` 会在 `dist/` 中生成只能检查和预演的未签名 GUI；高权限安装与恢复被刻意禁用。
+`make install-local` 只使用本仓库本地源码，不联网下载脚本；它构建 Community App、执行完整 ad-hoc 签名、复制到 `/Applications` 并启动。若当前用户不能写入 `/Applications`，脚本会停止并提示使用 Finder 拖入，不会自行提权。
 
-正式发行需要 Developer ID Application 证书与 Apple 公证。证书和公证凭据只能放在本机钥匙串或 GitHub Encrypted Secrets 中。
-
-## 图形界面
-
-![IHaveAlreadySeenIt 开发者预览版只读界面](Documentation/developer-preview.png)
-
-GUI 默认检查 `/Applications/WeChat.app`，也可以选择其他 App。首页显示版本、架构、官方签名、兼容状态、安装状态和备份状态，并提供：
-
-- 只读检查和重新检查。
-- 不写文件的完整安装预演。
-- 可复制的隐私安全诊断报告。
-- 签名发行版中的安装和恢复操作。
-
-未签名开发者预览版会明确显示“只读预览（禁止变更）”，且安装、恢复入口均不可用。未来的签名发行版还必须同时验证 App 与内嵌 Helper 的 Developer ID Team ID 一致，才会开放变更操作；安装前仍需再次确认风险。
-
-## 使用
-
-只读检查：
+生成 DMG：
 
 ```bash
-.build/release/ihavealreadyseenit inspect
+make dmg
 ```
 
-完整预演，包括在内存中验证 Mach-O 注入，不写文件：
+只读构建仍可显式生成：
 
 ```bash
-.build/release/ihavealreadyseenit plan
+BUILD_FLAVOR=read-only scripts/package-app.sh
 ```
 
-隐私安全诊断：
+## CLI
+
+发布 App 内的 CLI 位于 `IHaveAlreadySeenIt.app/Contents/Helpers/ihavealreadyseenit`：
 
 ```bash
-.build/release/ihavealreadyseenit doctor
-.build/release/ihavealreadyseenit doctor --json
+ihavealreadyseenit inspect --app /Applications/WeChat.app
+ihavealreadyseenit plan --app /Applications/WeChat.app
+ihavealreadyseenit doctor --json --app /Applications/WeChat.app
+ihavealreadyseenit install --confirm-i-understand --app /Applications/WeChat.app
+ihavealreadyseenit uninstall --app /Applications/WeChat.app
 ```
 
-安装前请退出微信。确认接受风险后：
-
-```bash
-sudo .build/release/ihavealreadyseenit install --confirm-i-understand
-```
-
-安装器会先把完整原始应用备份到 `/Applications/.IHaveAlreadySeenItBackup/Original-WeChat.bundle`。任一步骤失败都会尝试自动恢复。
-
-卸载并恢复腾讯原始签名版本：
-
-```bash
-sudo .build/release/ihavealreadyseenit uninstall
-```
-
-## 安全门
-
-安装必须同时满足：
-
-1. Bundle ID 为 `com.tencent.xinWeChat`。
-2. 版本、build 和 SHA-256 命中本地允许规则。
-3. 主程序同时包含 arm64 与 x86_64。
-4. 两种架构的撤回函数特征码分别且仅命中一次。
-5. Mach-O 头部有足够的零填充空间，不覆盖任何 section。
-6. 原应用通过严格代码签名验证，Team ID 为 `5A4RE8SF68`。
-7. 路径不是符号链接，所有者可信，父目录可写且磁盘空间充足。
-8. 微信进程已退出。
-9. 备份再次通过官方签名验证。
-10. 安装后 load command 与 ad-hoc 代码签名验证通过。
+安装和恢复前只请求微信正常退出并等待；进程仍存在则停止，绝不强制结束。
 
 ## 项目结构
 
 ```text
-Sources/IHaveAlreadySeenItCore/             分析、诊断、安装事务与资源
-Sources/ihavealreadyseenit/                 CLI
-Sources/IHaveAlreadySeenItApp/              SwiftUI GUI
-Sources/IHaveAlreadySeenItPrivilegedHelper/ 签名发行版的最小权限 Helper
-Tests/IHaveAlreadySeenItCoreTests/          无真实应用写入的测试
+Sources/IHaveAlreadySeenItCore/   诊断、安全门、Mach-O 处理与事务安装服务
+Sources/IHaveAlreadySeenItApp/    SwiftUI GUI、本地化与权限降级体验
+Sources/ihavealreadyseenit/       可审计 CLI
+Tests/                            故障注入、安全边界和状态决策测试
+scripts/                          本机构建、图标、DMG 与 Community 发布脚本
 ```
 
-## Homebrew
+未来正式签名版本的 Helper 基础代码目前保留在源码中供审计与研究，但 Community 打包脚本明确禁止将其放入 App。
 
-签名并公证的 Release 会同时生成带固定 SHA-256 的 Cask。Cask 应发布到 `FujimiyaKaor1/homebrew-tap` 后再提供安装命令；仓库中的模板不会使用 `:no_check` 绕过校验。
+## 图标授权
 
-维护者发布流程与所需 Secrets 见 [RELEASING.md](RELEASING.md)。
+界面背景、图标源图、SHA-256 与授权状态见 [`Assets/README.md`](Assets/README.md)。构建脚本从正方形原图生成全部 macOS 图标尺寸，并将 4096×3072 背景图压缩为适合窗口显示的版本。动画图标的第三方公开再分发权需要在发布 GitHub Release 前确认。
 
-## 获取帮助
+## 获取帮助与发布
 
-提交 Issue 前请阅读 [FAQ](FAQ.md)，并附上 `doctor --json` 的输出。不要上传聊天数据库、消息、账号信息、微信可执行文件或备份。
+提交 Issue 前请阅读 [FAQ](FAQ.md)，附上 `doctor --json`，但不要上传聊天数据、账号资料、微信二进制或备份。维护者流程见 [RELEASING.md](RELEASING.md)。Tag 工作流只创建草稿 Release，不读取任何 Apple 凭据。
 
-## 致谢与许可
-
-设计参考了 `a244573118/WeChatIntercept` 的 macOS 动态注入思路，以及 `huiyadanli/RevokeMsgPatcher` 的版本规则、备份恢复和失败即停思路。本项目没有复用两者仓库中的预编译二进制。
-
-项目以 GPL-3.0 许可发布，仅用于本地研究与测试。使用者需自行遵守适用法律、软件许可和平台规则。
+本项目采用 GPL-3.0 许可，仅用于本地研究和个人选择。使用者需自行遵守适用法律、软件许可和平台规则。

@@ -1,0 +1,8 @@
+IHaveAlreadySeenIt Community 1.0
+
+1. 将 IHaveAlreadySeenIt.app 拖入 Applications。
+2. 首次启动时，在 Finder 中右键应用并选择“打开”。
+3. 工具只支持微信 4.1.7 (34371)，不会读取聊天内容。
+4. 安装前会完整备份微信；需要管理员权限时，应用只会生成固定命令，由你在终端输入密码。
+
+请勿关闭 Gatekeeper 或 SIP，也不要执行来源不明的绕过命令。

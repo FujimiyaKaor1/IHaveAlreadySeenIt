@@ -47,7 +47,7 @@ struct PrivilegedHelperClient {
     }
 
     func perform(_ operation: PrivilegedOperation, appURL: URL) async throws {
-        guard AppRuntimeCapabilities.allowsPrivilegedOperations() else {
+        guard AppRuntimeCapabilities.hasSignedPrivilegedHelper() else {
             throw PrivilegedHelperClientError.readOnlyPreview
         }
         try ensureRegistered()

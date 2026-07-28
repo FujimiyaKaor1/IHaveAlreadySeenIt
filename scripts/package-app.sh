@@ -2,50 +2,57 @@
 set -euo pipefail
 
 ROOT="${0:A:h:h}"
-VERSION="${VERSION:-0.2.0}"
+VERSION="${VERSION:-1.0.0}"
 BUILD_NUMBER="${BUILD_NUMBER:-1}"
+BUILD_FLAVOR="${BUILD_FLAVOR:-community}"
 APP="$ROOT/dist/IHaveAlreadySeenIt.app"
 
+if [[ "$BUILD_FLAVOR" != "community" && "$BUILD_FLAVOR" != "read-only" ]]; then
+    print -u2 "BUILD_FLAVOR must be community or read-only"
+    exit 1
+fi
+
 cd "$ROOT"
-swift build -c release --product IHaveAlreadySeenItApp
-swift build -c release --product IHaveAlreadySeenItPrivilegedHelper
+APP_SWIFT_FLAGS=()
+if [[ "$BUILD_FLAVOR" == "community" ]]; then
+    APP_SWIFT_FLAGS=(-Xswiftc -DIHAVEALREADYSEENIT_LOCAL_DEVELOPMENT)
+fi
+
+swift build -c release --product IHaveAlreadySeenItApp "${APP_SWIFT_FLAGS[@]}"
 swift build -c release --product ihavealreadyseenit
 BIN_DIR="$(swift build -c release --show-bin-path)"
 
 rm -rf "$APP"
-mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Helpers" "$APP/Contents/Resources"
 sed -e "s/__VERSION__/$VERSION/g" -e "s/__BUILD_NUMBER__/$BUILD_NUMBER/g" \
     "$ROOT/Packaging/AppInfo.plist" > "$APP/Contents/Info.plist"
 install -m 755 "$BIN_DIR/IHaveAlreadySeenItApp" "$APP/Contents/MacOS/IHaveAlreadySeenItApp"
+install -m 755 "$BIN_DIR/ihavealreadyseenit" "$APP/Contents/Helpers/ihavealreadyseenit"
 
-RESOURCE_BUNDLE="$BIN_DIR/IHaveAlreadySeenIt_IHaveAlreadySeenItCore.bundle"
-if [[ ! -d "$RESOURCE_BUNDLE" ]]; then
-    print -u2 "Missing SwiftPM resource bundle: $RESOURCE_BUNDLE"
-    exit 1
-fi
-ditto "$RESOURCE_BUNDLE" "$APP/IHaveAlreadySeenIt_IHaveAlreadySeenItCore.bundle"
-
-if [[ -n "${DEVELOPER_ID_APPLICATION:-}" ]]; then
-    if [[ -z "${DEVELOPER_TEAM_ID:-}" ]]; then
-        print -u2 "DEVELOPER_TEAM_ID is required for a signed build"
+for bundle in \
+    "$BIN_DIR/IHaveAlreadySeenIt_IHaveAlreadySeenItCore.bundle" \
+    "$BIN_DIR/IHaveAlreadySeenIt_IHaveAlreadySeenItApp.bundle"; do
+    if [[ ! -d "$bundle" ]]; then
+        print -u2 "Missing SwiftPM resource bundle: $bundle"
         exit 1
     fi
-    mkdir -p "$APP/Contents/Library/LaunchServices" "$APP/Contents/Library/LaunchDaemons"
-    install -m 755 "$BIN_DIR/IHaveAlreadySeenItPrivilegedHelper" \
-        "$APP/Contents/Library/LaunchServices/IHaveAlreadySeenItPrivilegedHelper"
-    sed "s/__TEAM_ID__/$DEVELOPER_TEAM_ID/g" "$ROOT/Packaging/PrivilegedHelper.plist.in" > \
-        "$APP/Contents/Library/LaunchDaemons/io.github.fujimiyakaor1.IHaveAlreadySeenIt.PrivilegedHelper.plist"
+    ditto "$bundle" "$APP/Contents/Resources/${bundle:t}"
+done
 
-    codesign --force --timestamp --options runtime \
-        --identifier io.github.fujimiyakaor1.IHaveAlreadySeenIt.PrivilegedHelper \
-        --sign "$DEVELOPER_ID_APPLICATION" \
-        "$APP/Contents/Library/LaunchServices/IHaveAlreadySeenItPrivilegedHelper"
-    codesign --force --timestamp --options runtime \
-        --entitlements "$ROOT/Packaging/App.entitlements" \
-        --sign "$DEVELOPER_ID_APPLICATION" "$APP"
-    codesign --verify --deep --strict --verbose=2 "$APP"
-else
-    print "Created an unsigned read-only preview; privileged install/restore is intentionally unavailable."
+install -m 644 "$ROOT/Packaging/GeneratedIcons/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
+install -m 644 "$ROOT/Packaging/GeneratedIcons/AppIcon.png" "$APP/Contents/Resources/AppIcon.png"
+
+# Community builds never contain or register the privileged helper. The embedded CLI is
+# the only administrator boundary and accepts a fixed, audited command surface.
+if find "$APP" -iname '*PrivilegedHelper*' -print -quit | grep -q .; then
+    print -u2 "Community package unexpectedly contains a privileged helper"
+    exit 1
 fi
 
-print "$APP"
+# Sign nested executables first, then seal the complete bundle with an ad-hoc identity.
+codesign --force --sign - "$APP/Contents/Helpers/ihavealreadyseenit"
+codesign --force --sign - "$APP/Contents/MacOS/IHaveAlreadySeenItApp"
+codesign --force --deep --sign - "$APP"
+codesign --verify --deep --strict --verbose=2 "$APP"
+
+print "Created $BUILD_FLAVOR Community package: $APP"

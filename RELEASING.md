@@ -1,26 +1,11 @@
-# Releasing
+# Community release process
 
-Public releases must be signed with Developer ID Application, notarized by Apple, and produced by the tag-triggered GitHub Actions workflow. Do not publish an unsigned preview as a normal-user build.
+Community releases are free GitHub-only builds. They use an ad-hoc integrity signature and are **not Apple-notarized**. No Apple certificate, private key, notarization credential, Homebrew tap, or App Store account is used.
 
-## Required GitHub secrets
+1. Run `make coverage`, `make app`, and `make dmg` locally.
+2. Verify the DMG journey in a disposable macOS account or VM, including install, restore, repeat operations, insufficient permissions, and unknown-version refusal.
+3. Review `git diff`, secret scans, the icon license record, and both languages.
+4. Only after explicit approval, push the reviewed commit and a `vMAJOR.MINOR.PATCH` tag.
+5. The tag workflow builds and mounts the DMG, then creates a **draft** GitHub Release. Review it manually before publication.
 
-- `DEVELOPER_ID_P12_BASE64`: base64-encoded Developer ID Application certificate and private key.
-- `DEVELOPER_ID_P12_PASSWORD`: export password for the PKCS#12 file.
-- `DEVELOPER_ID_APPLICATION`: complete codesign identity name.
-- `DEVELOPER_TEAM_ID`: Apple developer team identifier used in the Helper client requirement.
-- `RELEASE_KEYCHAIN_PASSWORD`: random, release-only temporary keychain password.
-- `APPLE_NOTARY_KEY_P8_BASE64`: base64-encoded App Store Connect API private key.
-- `APPLE_NOTARY_KEY_ID`: App Store Connect API key ID.
-- `APPLE_NOTARY_ISSUER`: App Store Connect API issuer ID.
-
-Never commit these values, print them in workflow output, or reuse the temporary keychain password elsewhere.
-
-## Release sequence
-
-1. Run `make coverage`, `swift build -c release`, and `scripts/package-app.sh` locally.
-2. Test install and restore on a disposable macOS account or VM using a supported official WeChat copy.
-3. Tag an reviewed commit as `vMAJOR.MINOR.PATCH` and push the tag only after explicit approval.
-4. The workflow signs the app and Helper, notarizes and staples the app, creates a checksum, renders the Cask, and creates the GitHub Release.
-5. Review the generated `ihavealreadyseenit.rb`, then copy it to `FujimiyaKaor1/homebrew-tap/Casks/` in a separately approved change.
-
-The Cask template requires an exact archive SHA-256. Do not replace it with `:no_check`.
+The first launch requires Finder → right-click → Open. Release notes must never instruct users to disable Gatekeeper or SIP, remove quarantine attributes, or run remote scripts through a shell.

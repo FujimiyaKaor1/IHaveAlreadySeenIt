@@ -1,0 +1,8 @@
+IHaveAlreadySeenIt Community 1.0
+
+1. Drag IHaveAlreadySeenIt.app into Applications.
+2. On first launch, right-click the app in Finder and choose Open.
+3. Only WeChat 4.1.7 (34371) is supported. Chat content is never read.
+4. WeChat is fully backed up before changes. If administrator access is needed, the app generates one fixed command for you to run in Terminal.
+
+Do not disable Gatekeeper or SIP, and do not run untrusted bypass commands.

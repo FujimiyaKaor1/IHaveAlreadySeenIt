@@ -1,9 +1,8 @@
-name: Signed Release
+name: Community Release
 
 on:
   push:
-    tags:
-      - "v*"
+    tags: ["v*"]
 
 permissions:
   contents: write
@@ -13,52 +12,36 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v5
-      - name: Import Developer ID certificate
-        env:
-          P12_BASE64: ${{ secrets.DEVELOPER_ID_P12_BASE64 }}
-          P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
-          KEYCHAIN_PASSWORD: ${{ secrets.RELEASE_KEYCHAIN_PASSWORD }}
-        run: |
-          echo "$P12_BASE64" | base64 --decode > "$RUNNER_TEMP/developer-id.p12"
-          security create-keychain -p "$KEYCHAIN_PASSWORD" release.keychain-db
-          security set-keychain-settings -lut 21600 release.keychain-db
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" release.keychain-db
-          security import "$RUNNER_TEMP/developer-id.p12" -k release.keychain-db -P "$P12_PASSWORD" -T /usr/bin/codesign
-          security list-keychain -d user -s release.keychain-db
-          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" release.keychain-db
-      - name: Configure notarization profile
-        env:
-          NOTARY_KEY_BASE64: ${{ secrets.APPLE_NOTARY_KEY_P8_BASE64 }}
-          NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
-          NOTARY_ISSUER: ${{ secrets.APPLE_NOTARY_ISSUER }}
-        run: |
-          echo "$NOTARY_KEY_BASE64" | base64 --decode > "$RUNNER_TEMP/notary.p8"
-          xcrun notarytool store-credentials CI_NOTARY \
-            --key "$RUNNER_TEMP/notary.p8" \
-            --key-id "$NOTARY_KEY_ID" \
-            --issuer "$NOTARY_ISSUER"
-      - name: Build, sign, notarize, and render Cask
+        with:
+          fetch-depth: 0
+      - name: Build, test, and package Community artifacts
         env:
           VERSION: ${{ github.ref_name }}
-          DEVELOPER_ID_APPLICATION: ${{ secrets.DEVELOPER_ID_APPLICATION }}
-          DEVELOPER_TEAM_ID: ${{ secrets.DEVELOPER_TEAM_ID }}
-          NOTARY_PROFILE: CI_NOTARY
         run: |
           export VERSION="${VERSION#v}"
           scripts/release.sh
-      - name: Create GitHub Release
+      - name: Mount and verify DMG
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          VERSION="${VERSION#v}"
+          MOUNT="$(mktemp -d)"
+          hdiutil attach -quiet -nobrowse -mountpoint "$MOUNT" "dist/IHaveAlreadySeenIt-$VERSION-Community.dmg"
+          test -d "$MOUNT/IHaveAlreadySeenIt.app"
+          test -L "$MOUNT/Applications"
+          test -f "$MOUNT/首次使用说明.txt"
+          test -f "$MOUNT/First Use.txt"
+          codesign --verify --deep --strict "$MOUNT/IHaveAlreadySeenIt.app"
+          hdiutil detach -quiet "$MOUNT"
+      - name: Create draft GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ github.ref_name }}
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${VERSION#v}"
           gh release create "$GITHUB_REF_NAME" \
-            "dist/IHaveAlreadySeenIt-$VERSION.app.zip" \
-            "dist/IHaveAlreadySeenIt-$VERSION.app.zip.sha256" \
-            "dist/ihavealreadyseenit.rb" \
-            --generate-notes \
-            --verify-tag
-      - name: Remove temporary credentials
-        if: always()
-        run: |
-          security delete-keychain release.keychain-db || true
-          rm -f "$RUNNER_TEMP/developer-id.p12" "$RUNNER_TEMP/notary.p8"
+            "dist/IHaveAlreadySeenIt-$VERSION-Community.dmg" \
+            "dist/IHaveAlreadySeenIt-$VERSION-Community.dmg.sha256" \
+            "dist/IHaveAlreadySeenIt-$VERSION-source.tar.gz" \
+            "dist/IHaveAlreadySeenIt-$VERSION-source.tar.gz.sha256" \
+            --draft --generate-notes --verify-tag

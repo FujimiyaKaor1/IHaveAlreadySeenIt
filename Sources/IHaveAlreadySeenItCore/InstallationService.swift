@@ -31,7 +31,7 @@ public enum InstallationServiceError: Error, Equatable, Sendable {
 public typealias InstallerError = InstallationServiceError
 
 public struct InstallationService: @unchecked Sendable {
-    public static let toolVersion = "0.2.0"
+    public static let toolVersion = "1.0.0"
 
     private let runner: any ProcessRunning
     private let signatureVerifier: any CodeSignatureVerifying
@@ -57,6 +57,17 @@ public struct InstallationService: @unchecked Sendable {
         runner: any ProcessRunning = SystemProcessRunner(),
         signatureVerifier: (any CodeSignatureVerifying)? = nil
     ) throws -> InstallationService {
+        let locator = InstallationResourceLocator()
+        if let resources = try? locator.resolve(
+            searchRoots: InstallationResourceLocator.standardSearchRoots()
+        ) {
+            return InstallationService(
+                hookSourceURL: resources.hookSourceURL,
+                entitlementsURL: resources.entitlementsURL,
+                runner: runner,
+                signatureVerifier: signatureVerifier
+            )
+        }
         guard let hookSource = Bundle.module.url(forResource: "AntiRevokeHook", withExtension: "c"),
               let entitlements = Bundle.module.url(
                   forResource: "IHaveAlreadySeenIt",

@@ -2,7 +2,25 @@ import Foundation
 import IHaveAlreadySeenItCore
 
 enum AppRuntimeCapabilities {
-    static func allowsPrivilegedOperations(
+    static var localDevelopmentEnabled: Bool {
+#if IHAVEALREADYSEENIT_LOCAL_DEVELOPMENT
+        true
+#else
+        false
+#endif
+    }
+
+    static func mutationBackend(
+        in bundle: Bundle = .main,
+        verifier: any CodeSignatureVerifying = SystemCodeSignatureVerifier()
+    ) -> AppMutationBackend {
+        AppMutationBackend.resolve(
+            localDevelopmentEnabled: localDevelopmentEnabled,
+            signedHelperAvailable: hasSignedPrivilegedHelper(in: bundle, verifier: verifier)
+        )
+    }
+
+    static func hasSignedPrivilegedHelper(
         in bundle: Bundle = .main,
         verifier: any CodeSignatureVerifying = SystemCodeSignatureVerifier()
     ) -> Bool {

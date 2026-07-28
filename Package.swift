@@ -20,6 +20,7 @@ let commandLineToolsTestingLinkerSettings: [LinkerSetting] = commandLineToolsTes
 
 let package = Package(
     name: "IHaveAlreadySeenIt",
+    defaultLocalization: "zh-Hans",
     platforms: [.macOS(.v14)],
     products: [
         .library(name: "IHaveAlreadySeenItCore", targets: ["IHaveAlreadySeenItCore"]),
@@ -37,7 +38,11 @@ let package = Package(
             name: "ihavealreadyseenit",
             dependencies: ["IHaveAlreadySeenItCore"]
         ),
-        .executableTarget(name: "IHaveAlreadySeenItApp", dependencies: ["IHaveAlreadySeenItCore"]),
+        .executableTarget(
+            name: "IHaveAlreadySeenItApp",
+            dependencies: ["IHaveAlreadySeenItCore"],
+            resources: [.process("Resources")]
+        ),
         .executableTarget(
             name: "IHaveAlreadySeenItPrivilegedHelper",
             dependencies: ["IHaveAlreadySeenItCore"]

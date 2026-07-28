@@ -1,4 +1,4 @@
-.PHONY: build test coverage app inspect plan doctor clean
+.PHONY: build test coverage app dmg install-local inspect plan doctor clean
 
 build:
 	swift build -c release
@@ -11,6 +11,12 @@ coverage:
 
 app:
 	scripts/package-app.sh
+
+dmg:
+	scripts/package-dmg.sh
+
+install-local:
+	scripts/install-local.sh
 
 inspect:
 	swift run ihavealreadyseenit inspect
