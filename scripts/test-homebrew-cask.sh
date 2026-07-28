@@ -2,10 +2,11 @@
 set -euo pipefail
 
 ROOT="${0:A:h:h}"
-CASK="$ROOT/Packaging/Homebrew/Casks/ihavealreadyseenit.rb"
+CASK="$ROOT/Casks/ihavealreadyseenit.rb"
 TAP="ihavealreadyseenit-smoke-$$/tap"
 TOKEN="$TAP/ihavealreadyseenit"
 TEMPORARY="$(mktemp -d "${TMPDIR:-/tmp}/ihavealreadyseenit-homebrew.XXXXXX")"
+TAP_SOURCE="$TEMPORARY/tap-source"
 APP_DIRECTORY="$TEMPORARY/Applications"
 APP="$APP_DIRECTORY/IHaveAlreadySeenIt.app"
 BACKUP_EXECUTABLE="/Applications/.IHaveAlreadySeenItBackup/Original-WeChat.bundle/Contents/MacOS/WeChat"
@@ -35,17 +36,20 @@ if [[ ! -f "$CASK" || -L "$CASK" ]]; then
     exit 2
 fi
 
-mkdir -p "$APP_DIRECTORY"
+mkdir -p "$APP_DIRECTORY" "$TAP_SOURCE/Casks"
 BACKUP_HASH=""
 if [[ -f "$BACKUP_EXECUTABLE" ]]; then
     BACKUP_HASH="$(shasum -a 256 "$BACKUP_EXECUTABLE" | awk '{ print $1 }')"
 fi
 
-brew tap-new --no-git "$TAP" >/dev/null
+install -m 644 "$CASK" "$TAP_SOURCE/Casks/ihavealreadyseenit.rb"
+git -C "$TAP_SOURCE" init --quiet --initial-branch=main
+git -C "$TAP_SOURCE" config user.name "IHaveAlreadySeenIt Smoke Test"
+git -C "$TAP_SOURCE" config user.email "smoke-test@localhost"
+git -C "$TAP_SOURCE" add Casks/ihavealreadyseenit.rb
+git -C "$TAP_SOURCE" commit --quiet -m "Test same-repository Tap layout"
 CREATED_TAP=1
-TAP_REPOSITORY="$(brew --repository "$TAP")"
-mkdir -p "$TAP_REPOSITORY/Casks"
-install -m 644 "$CASK" "$TAP_REPOSITORY/Casks/ihavealreadyseenit.rb"
+brew tap "$TAP" "file://$TAP_SOURCE"
 
 brew install --cask --appdir="$APP_DIRECTORY" "$TOKEN"
 INSTALLED_CASK=1

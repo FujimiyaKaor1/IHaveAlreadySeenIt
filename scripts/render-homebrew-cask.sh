@@ -5,7 +5,7 @@ ROOT="${0:A:h:h}"
 TEMPLATE="$ROOT/Packaging/Homebrew/ihavealreadyseenit.rb.in"
 VERSION="${1:-}"
 SHA256="${2:-}"
-OUTPUT="${3:-$ROOT/Packaging/Homebrew/Casks/ihavealreadyseenit.rb}"
+OUTPUT="${3:-$ROOT/Casks/ihavealreadyseenit.rb}"
 
 if [[ ! "$VERSION" =~ '^[0-9]+\.[0-9]+\.[0-9]+$' ]]; then
     print -u2 "Version must be a stable semantic version such as 1.0.1"

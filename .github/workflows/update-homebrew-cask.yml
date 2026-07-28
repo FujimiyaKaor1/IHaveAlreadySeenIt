@@ -1,4 +1,4 @@
-name: Sync Homebrew Tap
+name: Update Homebrew Cask
 
 on:
   workflow_dispatch:
@@ -9,13 +9,15 @@ on:
         type: string
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  sync:
+  update:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: main
 
       - name: Verify published Release and obtain DMG digest
         id: release
@@ -31,33 +33,24 @@ jobs:
           [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
           printf 'sha256=%s\n' "${DIGEST#sha256:}" >> "$GITHUB_OUTPUT"
 
-      - name: Check out the personal Tap
-        uses: actions/checkout@v5
-        with:
-          repository: FujimiyaKaor1/homebrew-tap
-          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-          path: homebrew-tap
-
       - name: Render and audit the Cask
         env:
           VERSION: ${{ inputs.version }}
           SHA256: ${{ steps.release.outputs.sha256 }}
         run: |
-          scripts/render-homebrew-cask.sh \
-            "$VERSION" "$SHA256" "$GITHUB_WORKSPACE/homebrew-tap/Casks/ihavealreadyseenit.rb"
-          scripts/verify-homebrew-cask.sh \
-            "$GITHUB_WORKSPACE/homebrew-tap/Casks/ihavealreadyseenit.rb"
+          scripts/render-homebrew-cask.sh "$VERSION" "$SHA256"
+          scripts/verify-homebrew-cask.sh
 
-      - name: Commit the Tap update
+      - name: Commit the Cask update
         env:
           VERSION: ${{ inputs.version }}
         run: |
-          if [[ -z "$(git -C homebrew-tap status --porcelain -- Casks/ihavealreadyseenit.rb)" ]]; then
-            printf 'Tap already contains IHaveAlreadySeenIt %s\n' "$VERSION"
+          if [[ -z "$(git status --porcelain -- Casks/ihavealreadyseenit.rb)" ]]; then
+            printf 'Cask already contains IHaveAlreadySeenIt %s\n' "$VERSION"
             exit 0
           fi
-          git -C homebrew-tap config user.name "github-actions[bot]"
-          git -C homebrew-tap config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git -C homebrew-tap add Casks/ihavealreadyseenit.rb
-          git -C homebrew-tap commit -m "Update IHaveAlreadySeenIt to $VERSION"
-          git -C homebrew-tap push origin HEAD:main
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Casks/ihavealreadyseenit.rb
+          git commit -m "Update Homebrew Cask to $VERSION"
+          git push origin HEAD:main

@@ -9,7 +9,7 @@ import Testing
     func shippedCaskPinsThePublishedReleaseWithoutBypassingGatekeeper() throws {
         let cask = try String(
             contentsOf: repositoryRoot
-                .appendingPathComponent("Packaging/Homebrew/Casks/ihavealreadyseenit.rb"),
+                .appendingPathComponent("Casks/ihavealreadyseenit.rb"),
             encoding: .utf8
         )
 
@@ -45,7 +45,7 @@ import Testing
         #expect(result.status == 0)
         let rendered = try Data(contentsOf: output)
         let reviewed = try Data(contentsOf: repositoryRoot
-            .appendingPathComponent("Packaging/Homebrew/Casks/ihavealreadyseenit.rb"))
+            .appendingPathComponent("Casks/ihavealreadyseenit.rb"))
         #expect(rendered == reviewed)
     }
 
@@ -73,9 +73,11 @@ import Testing
             encoding: .utf8
         )
 
-        #expect(readme.contains("brew tap FujimiyaKaor1/tap"))
         #expect(readme.contains(
-            "brew install --cask FujimiyaKaor1/tap/ihavealreadyseenit"
+            "brew tap FujimiyaKaor1/ihavealreadyseenit https://github.com/FujimiyaKaor1/IHaveAlreadySeenIt.git"
+        ))
+        #expect(readme.contains(
+            "brew install --cask FujimiyaKaor1/ihavealreadyseenit/ihavealreadyseenit"
         ))
         #expect(readme.contains("brew upgrade --cask ihavealreadyseenit"))
         #expect(readme.contains("brew uninstall --cask ihavealreadyseenit"))
@@ -89,25 +91,33 @@ import Testing
         let releaseScript = try contents("scripts/release.sh")
         let releaseWorkflow = try contents(".github/workflows/release.yml")
         let ciWorkflow = try contents(".github/workflows/ci.yml")
-        let syncWorkflow = try contents(".github/workflows/sync-homebrew-tap.yml")
+        let updateWorkflow = try contents(".github/workflows/update-homebrew-cask.yml")
 
         #expect(releaseScript.contains("render-homebrew-cask.sh"))
         #expect(releaseScript.contains("Community.dmg.sha256"))
         #expect(releaseWorkflow.contains("dist/Casks/ihavealreadyseenit.rb"))
         #expect(ciWorkflow.contains("verify-homebrew-cask.sh"))
-        #expect(syncWorkflow.contains("workflow_dispatch:"))
-        #expect(syncWorkflow.contains("FujimiyaKaor1/homebrew-tap"))
-        #expect(syncWorkflow.contains("HOMEBREW_TAP_TOKEN"))
-        #expect(syncWorkflow.contains("render-homebrew-cask.sh"))
-        #expect(syncWorkflow.contains("status --porcelain -- Casks/ihavealreadyseenit.rb"))
-        #expect(!syncWorkflow.contains("no_quarantine"))
+        #expect(updateWorkflow.contains("workflow_dispatch:"))
+        #expect(updateWorkflow.contains("permissions:"))
+        #expect(updateWorkflow.contains("contents: write"))
+        #expect(updateWorkflow.contains("render-homebrew-cask.sh"))
+        #expect(updateWorkflow.contains("status --porcelain -- Casks/ihavealreadyseenit.rb"))
+        #expect(updateWorkflow.contains("push origin HEAD:main"))
+        #expect(!updateWorkflow.contains("HOMEBREW_TAP_TOKEN"))
+        #expect(!updateWorkflow.contains("FujimiyaKaor1/homebrew-tap"))
+        #expect(!updateWorkflow.contains("no_quarantine"))
     }
 
     @Test
     func tapReadmeDocumentsInstallUpgradeAndSafeUninstall() throws {
         let tapReadme = try contents("Packaging/Homebrew/README.md")
 
-        #expect(tapReadme.contains("brew install --cask FujimiyaKaor1/tap/ihavealreadyseenit"))
+        #expect(tapReadme.contains(
+            "brew tap FujimiyaKaor1/ihavealreadyseenit https://github.com/FujimiyaKaor1/IHaveAlreadySeenIt.git"
+        ))
+        #expect(tapReadme.contains(
+            "brew install --cask FujimiyaKaor1/ihavealreadyseenit/ihavealreadyseenit"
+        ))
         #expect(tapReadme.contains("brew upgrade --cask ihavealreadyseenit"))
         #expect(tapReadme.contains("恢复原版微信"))
         #expect(tapReadme.contains("right-click"))
@@ -115,16 +125,17 @@ import Testing
     }
 
     @Test
-    func tapWorkflowAuditsCaskChangesOnPushAndPullRequest() throws {
-        let workflow = try contents("Packaging/Homebrew/.github/workflows/audit.yml")
+    func caskLivesAtTapRootAndNeedsNoNestedTapRepository() throws {
+        let fileManager = FileManager.default
 
-        #expect(workflow.contains("push:"))
-        #expect(workflow.contains("pull_request:"))
-        #expect(workflow.contains("runs-on: macos-15"))
-        #expect(workflow.contains("permissions:"))
-        #expect(workflow.contains("contents: read"))
-        #expect(workflow.contains("brew style Casks/ihavealreadyseenit.rb"))
-        #expect(workflow.contains("brew audit --cask --strict"))
+        #expect(fileManager.fileExists(atPath: repositoryRoot
+            .appendingPathComponent("Casks/ihavealreadyseenit.rb").path))
+        #expect(!fileManager.fileExists(atPath: repositoryRoot
+            .appendingPathComponent("Packaging/Homebrew/Casks/ihavealreadyseenit.rb").path))
+        #expect(!fileManager.fileExists(atPath: repositoryRoot
+            .appendingPathComponent(".github/workflows/sync-homebrew-tap.yml").path))
+        #expect(!fileManager.fileExists(atPath: repositoryRoot
+            .appendingPathComponent("Packaging/Homebrew/.github/workflows/audit.yml").path))
     }
 
     @Test
@@ -132,6 +143,8 @@ import Testing
         let smokeTest = try contents("scripts/test-homebrew-cask.sh")
 
         #expect(smokeTest.contains("--appdir="))
+        #expect(smokeTest.contains("brew tap \"$TAP\" \"file://$TAP_SOURCE\""))
+        #expect(smokeTest.contains("Casks/ihavealreadyseenit.rb"))
         #expect(smokeTest.contains("brew install --cask"))
         #expect(smokeTest.contains("brew reinstall --cask"))
         #expect(smokeTest.contains("brew uninstall --cask"))
@@ -143,6 +156,7 @@ import Testing
         #expect(!smokeTest.contains("/Applications/WeChat.app"))
         #expect(!smokeTest.contains("killall"))
         #expect(!smokeTest.contains("no-quarantine"))
+        #expect(!smokeTest.contains("brew tap-new"))
     }
 
     private var repositoryRoot: URL {

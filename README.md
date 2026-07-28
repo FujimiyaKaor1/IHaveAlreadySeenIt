@@ -22,11 +22,12 @@ IHaveAlreadySeenIt 是一个免费、开源、仅在本机运行的 macOS 微信
 Homebrew 会自动下载 GitHub Release、核对 SHA-256 并把 App 安装到 Applications：
 
 ```bash
-brew tap FujimiyaKaor1/tap
-brew install --cask FujimiyaKaor1/tap/ihavealreadyseenit
+brew tap FujimiyaKaor1/ihavealreadyseenit https://github.com/FujimiyaKaor1/IHaveAlreadySeenIt.git
+brew install --cask FujimiyaKaor1/ihavealreadyseenit/ihavealreadyseenit
 ```
 
-使用完整 Cask 名称可以让 Homebrew 只信任这个 Cask，而不是自动信任 Tap 中未来出现的所有软件。
+项目仓库本身同时也是 Homebrew Tap，因此不需要维护第二个仓库。第一条命令中的显式 URL
+用于告诉 Homebrew 从本仓库读取根目录下的 `Casks/`；使用完整 Cask 名称可以避免名称歧义。
 
 安装完成后，首次启动仍需在 Finder 的“应用程序”中右键 IHaveAlreadySeenIt，选择“打开”并确认。Homebrew 不会绕过 Gatekeeper，也不会代替 GUI 获取管理员权限。
 

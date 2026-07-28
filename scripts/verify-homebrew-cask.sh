@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="${0:A:h:h}"
-CASK="${1:-$ROOT/Packaging/Homebrew/Casks/ihavealreadyseenit.rb}"
+CASK="${1:-$ROOT/Casks/ihavealreadyseenit.rb}"
 
 if [[ ! -f "$CASK" || -L "$CASK" ]]; then
     print -u2 "Cask must be a regular file: $CASK"

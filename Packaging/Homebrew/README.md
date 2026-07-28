@@ -1,12 +1,14 @@
-# FujimiyaKaor1 Homebrew Tap
+# Homebrew distribution from the main repository
 
-This tap distributes the ad-hoc signed IHaveAlreadySeenIt Community build directly from its
-published GitHub Release. Homebrew verifies the pinned SHA-256 before installing the App.
+The IHaveAlreadySeenIt repository is also its Homebrew Tap. It distributes the ad-hoc signed
+Community build directly from the published GitHub Release, and Homebrew verifies the pinned
+SHA-256 before installing the App. No second repository or cross-repository credential is used.
 
 ## Install
 
 ```bash
-brew install --cask FujimiyaKaor1/tap/ihavealreadyseenit
+brew tap FujimiyaKaor1/ihavealreadyseenit https://github.com/FujimiyaKaor1/IHaveAlreadySeenIt.git
+brew install --cask FujimiyaKaor1/ihavealreadyseenit/ihavealreadyseenit
 ```
 
 The Community build is not Apple-notarized. On first launch, open Finder → Applications,
