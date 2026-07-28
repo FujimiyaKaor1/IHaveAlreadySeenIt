@@ -1,6 +1,6 @@
 name: WeChat version support
 description: Request strict validation of an unsupported official WeChat build
-title: "[Version]: "
+title: "[Version]: Request support for WeChat version "
 labels: [compatibility]
 body:
   - type: markdown

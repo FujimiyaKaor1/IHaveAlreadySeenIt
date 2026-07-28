@@ -1,0 +1,33 @@
+name: Feature request
+description: Suggest a safe improvement to the macOS WeChat anti-revoke workflow
+title: "[Feature]: Improve WeChat anti-revoke workflow - "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: Never upload WeChat.app, WeChat binaries, backups, hook logs, messages, account identifiers, keys, or passwords.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or user need
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed improvement
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+    validations:
+      required: false
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy confirmation
+      options:
+        - label: I will not attach WeChat binaries, backups, logs, chat data, or account data.
+          required: true

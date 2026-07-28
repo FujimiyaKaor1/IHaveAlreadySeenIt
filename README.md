@@ -1,10 +1,18 @@
 # IHaveAlreadySeenIt
 
-IHaveAlreadySeenIt 是一个免费、开源、仅在本机运行的 macOS 微信防撤回工具。它提供面向普通用户的图形界面，在修改微信前检查官方签名和精确版本，自动保存完整原版备份，并在失败时回滚。
+## macOS 微信防撤回工具
+
+IHaveAlreadySeenIt 是一个免费、开源、仅在本机运行的 macOS 微信防撤回工具和 macOS 微信插件。它提供面向普通用户的 SwiftUI macOS app，在修改微信前检查官方签名和精确版本，自动保存完整原版备份，并在失败时回滚。
+
+IHaveAlreadySeenIt is an open-source macOS WeChat anti-revoke tool for WeChat message recall. It provides strict version verification, full backup, rollback, and privacy-first local processing. The Community Build currently supports only verified WeChat `4.1.7 (34371)`.
 
 项目不读取聊天内容、联系人或账号信息，不包含遥测、自动上传和后台自动修改。它不是微信官方插件；修改客户端仍可能带来兼容性、更新或账号风险，请在理解风险后使用。
 
-![IHaveAlreadySeenIt Community 界面](Documentation/community-1.0.png)
+![IHaveAlreadySeenIt Community macOS 微信防撤回界面](Documentation/community-1.0.png)
+
+## What is IHaveAlreadySeenIt?
+
+IHaveAlreadySeenIt 不是微信官方插件，也不是绕过 macOS 安全机制的工具。它只在本机运行，在严格验证已支持的官方微信版本后执行可回滚的客户端修改；未知版本只提供诊断，不会尝试注入。
 
 ## 适合谁使用
 
@@ -15,9 +23,9 @@ IHaveAlreadySeenIt 是一个免费、开源、仅在本机运行的 macOS 微信
 
 不在支持矩阵中的版本只会显示诊断信息，工具不会尝试注入或模糊匹配。
 
-## 下载与安装
+## Download and Install / 下载与安装
 
-### Homebrew（推荐）
+### Homebrew Installation / Homebrew（推荐）
 
 Homebrew 会自动下载 GitHub Release、核对 SHA-256 并把 App 安装到 Applications：
 
@@ -67,7 +75,7 @@ shasum -a 256 -c IHaveAlreadySeenIt-*-Community.dmg.sha256
 
 输出 `OK` 后再打开 DMG。
 
-## 安装与部署
+## Installation and Deployment / 安装与部署
 
 1. 打开下载的 DMG，将 `IHaveAlreadySeenIt.app` 拖入 `Applications`。
 2. 第一次启动时，在 Finder 的“应用程序”中右键该 App，选择“打开”，再确认一次。
@@ -79,7 +87,7 @@ shasum -a 256 -c IHaveAlreadySeenIt-*-Community.dmg.sha256
 
 GUI 不会索取或保存管理员密码。终端命令只能调用当前 App 内嵌的 CLI 执行安装或恢复，路径会经过标准化和严格转义。
 
-## 支持状态
+## Supported WeChat Versions / 支持状态
 
 | 微信版本 | Build | 架构 | 官方主程序 SHA-256 | 状态 |
 |---|---:|---|---|---|
@@ -91,7 +99,7 @@ GUI 不会索取或保存管理员密码。终端命令只能调用当前 App �
 
 当前版本的验证记录：[WeChat macOS 4.1.7 (34371)](Documentation/compatibility/wechat-macos-4.1.7-34371.md)。
 
-## 如何反馈
+## How to Report a Problem / 如何反馈
 
 ### 遇到功能问题
 
@@ -114,7 +122,7 @@ GUI 不会索取或保存管理员密码。终端命令只能调用当前 App �
 
 诊断报告只用于判断版本需求，不会让未知版本自动进入安装白名单。常见问题见 [FAQ](FAQ.md)。
 
-## 隐私、安全与恢复
+## Security and Privacy / 隐私、安全与恢复
 
 - 无遥测、无自动上传、无自动更新、无后台常驻项。
 - 不读取聊天数据库，不附加正在运行的微信进程。

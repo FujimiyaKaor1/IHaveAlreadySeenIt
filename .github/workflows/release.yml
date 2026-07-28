@@ -21,6 +21,35 @@ jobs:
           export VERSION="${VERSION#v}"
           scripts/release.sh
           scripts/verify-homebrew-cask.sh dist/Casks/ihavealreadyseenit.rb
+      - name: Prepare bilingual release notes
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          VERSION="${VERSION#v}"
+          DMG_SHA256="$(awk 'NR == 1 { print $1 }' "dist/IHaveAlreadySeenIt-$VERSION-Community.dmg.sha256")"
+          cat > dist/release-notes.md <<EOF
+          ## IHaveAlreadySeenIt Community v$VERSION — macOS WeChat Anti-Revoke Tool
+
+          IHaveAlreadySeenIt is an open-source macOS WeChat anti-revoke tool. It is not an official WeChat plugin.
+
+          ### Supported environment
+
+          - macOS 14 or later
+          - Verified WeChat 4.1.7 (34371) only
+          - DMG SHA-256: $DMG_SHA256
+
+          ### 安全说明
+
+          - Community Build 使用 ad-hoc 签名，未经 Apple 公证；首次启动请在 Finder 中右键选择 打开。
+          - 工具不读取聊天内容，不上传数据，也不会自动修改未知微信版本。
+          - 修改前会保存完整原版微信；需要卸载工具前，请先在 GUI 中选择 恢复原版微信。
+
+          ### Install and feedback
+
+          Download the DMG below, or use the [Homebrew instructions](https://github.com/FujimiyaKaor1/IHaveAlreadySeenIt#homebrew-installation--homebrew).
+          Report problems with the [Bug Report template](https://github.com/FujimiyaKaor1/IHaveAlreadySeenIt/issues/new?template=bug_report.yml).
+          Request a new verified WeChat build with the [Version Support template](https://github.com/FujimiyaKaor1/IHaveAlreadySeenIt/issues/new?template=version_support.yml).
+          EOF
       - name: Mount and verify DMG
         env:
           VERSION: ${{ github.ref_name }}
@@ -49,4 +78,5 @@ jobs:
             "dist/IHaveAlreadySeenIt-$VERSION-source.tar.gz" \
             "dist/IHaveAlreadySeenIt-$VERSION-source.tar.gz.sha256" \
             "dist/Casks/ihavealreadyseenit.rb" \
-            --draft --generate-notes --verify-tag
+            --draft --title "IHaveAlreadySeenIt Community v$VERSION — macOS WeChat Anti-Revoke Tool" \
+            --notes-file dist/release-notes.md --verify-tag

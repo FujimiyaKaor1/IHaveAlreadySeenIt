@@ -1,11 +1,32 @@
 name: Bug report
-description: Report a reproducible problem without sharing chat or account data
-title: "[Bug]: "
+description: Report a macOS WeChat anti-revoke problem without sharing chat or account data
+title: "[Bug]: macOS 微信防撤回工具安装失败 - "
 labels: [bug]
 body:
   - type: markdown
     attributes:
-      value: Never upload WeChat databases, messages, account identifiers, or the WeChat executable.
+      value: Never upload WeChat.app, WeChat binaries, backups, hook logs, messages, account identifiers, keys, or passwords.
+  - type: input
+    id: macos_version
+    attributes:
+      label: macOS version
+      placeholder: macOS 14.x or macOS 26.x
+    validations:
+      required: true
+  - type: input
+    id: tool_version
+    attributes:
+      label: IHaveAlreadySeenIt version
+      placeholder: 1.0.2
+    validations:
+      required: true
+  - type: input
+    id: wechat_version
+    attributes:
+      label: WeChat version and Build
+      placeholder: 4.1.7 (34371)
+    validations:
+      required: true
   - type: textarea
     id: diagnostics
     attributes:
@@ -24,5 +45,11 @@ body:
     id: expected
     attributes:
       label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior and error message
     validations:
       required: true
