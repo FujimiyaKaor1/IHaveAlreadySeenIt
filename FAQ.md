@@ -20,6 +20,13 @@ No. There is no network access, telemetry, chat-database access, or automatic up
 
 The patch normally disappears or becomes unsupported. Run the check again. Unknown versions and hashes are always refused.
 
+## How can I request support for a new version?
+
+Use the version-support issue template and paste the privacy-safe `doctor --json` output.
+Maintainers use `verify-version --json` locally when reviewing an official app copy. Candidate
+evidence never enables installation automatically. Do not upload WeChat.app, its executable,
+backups, hook logs, account identifiers, or chat data.
+
 ## How do I get help safely?
 
 Copy the GUI diagnostic report or run the embedded `ihavealreadyseenit doctor --json`. Never upload chat data, account details, the WeChat executable, or backups.

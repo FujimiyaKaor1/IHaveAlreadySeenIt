@@ -29,6 +29,10 @@ GUI 支持简体中文和英文，会跟随系统语言。浅色、深色、降�
 
 其他版本、Build、哈希或架构会安全拒绝，不进行模糊匹配。增加新版本必须重新提供官方样本证据、双架构唯一特征和安装/恢复验证。
 
+内置规则按版本独立保存整包与架构 SHA-256、arm64/x86_64 特征、架构要求和最小 Mach-O 头部空间。候选规则只能生成诊断，不能安装；默认最多维护最近两个完成真实验证的构建。
+
+当前规则的可审计验证记录见 [`Documentation/compatibility/wechat-macos-4.1.7-34371.md`](Documentation/compatibility/wechat-macos-4.1.7-34371.md)。
+
 ## 隐私与安全边界
 
 - 不访问网络、无遥测、无自动上传、无自动更新。
@@ -52,6 +56,7 @@ make test
 make coverage
 make app
 make install-local
+make verify-version APP="/path/to/WeChat.app"
 ```
 
 `make install-local` 只使用本仓库本地源码，不联网下载脚本；它构建 Community App、执行完整 ad-hoc 签名、复制到 `/Applications` 并启动。若当前用户不能写入 `/Applications`，脚本会停止并提示使用 Finder 拖入，不会自行提权。
@@ -76,11 +81,14 @@ BUILD_FLAVOR=read-only scripts/package-app.sh
 ihavealreadyseenit inspect --app /Applications/WeChat.app
 ihavealreadyseenit plan --app /Applications/WeChat.app
 ihavealreadyseenit doctor --json --app /Applications/WeChat.app
+ihavealreadyseenit verify-version --json --app /Applications/WeChat.app
 ihavealreadyseenit install --confirm-i-understand --app /Applications/WeChat.app
 ihavealreadyseenit uninstall --app /Applications/WeChat.app
 ```
 
 安装和恢复前只请求微信正常退出并等待；进程仍存在则停止，绝不强制结束。
+
+`verify-version` 是维护者只读工具，会输出版本、Build、官方签名、整包和架构哈希、特征命中数与头部空间。它不会修改微信，也不会把候选版本加入安装白名单。
 
 ## 项目结构
 

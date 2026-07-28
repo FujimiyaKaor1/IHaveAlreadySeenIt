@@ -3,8 +3,11 @@ import Foundation
 public enum PatchPlanningError: Error, Equatable, Sendable {
     case unsupportedVersion
     case unknownExecutableHash
+    case architectureHashMismatch
+    case candidateVersion
     case unsafeSignatureMatches
     case unsupportedArchitectures
+    case insufficientHeaderSpace
     case alreadyInstalled
     case executableChanged
     case injectionVerificationFailed
@@ -17,6 +20,10 @@ public enum PatchPlanner {
             break
         case .unknownHash:
             throw PatchPlanningError.unknownExecutableHash
+        case .architectureHashMismatch:
+            throw PatchPlanningError.architectureHashMismatch
+        case .candidate:
+            throw PatchPlanningError.candidateVersion
         case .unsupportedVersion:
             throw PatchPlanningError.unsupportedVersion
         }
@@ -26,9 +33,16 @@ public enum PatchPlanner {
         guard report.signatureScan.isSafeToPatch else {
             throw PatchPlanningError.unsafeSignatureMatches
         }
-        let requiredArchitectures = Set(MachOArchitecture.allCases)
+        let requiredArchitectures = report.compatibilityProfile?.supportedArchitectures
+            ?? Set(MachOArchitecture.allCases)
         guard report.injection.architectures == requiredArchitectures else {
             throw PatchPlanningError.unsupportedArchitectures
+        }
+        if let profile = report.compatibilityProfile,
+           !requiredArchitectures.allSatisfy({ architecture in
+               (report.injection.headerSlack[architecture] ?? -1) >= profile.minimumHeaderSlack
+           }) {
+            throw PatchPlanningError.insufficientHeaderSpace
         }
         guard report.injection.slicesContainingDylib.isEmpty else {
             throw PatchPlanningError.alreadyInstalled

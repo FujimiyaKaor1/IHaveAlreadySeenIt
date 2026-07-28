@@ -65,7 +65,6 @@ struct ContentView: View {
         HStack(spacing: 14) {
             VStack(alignment: .leading, spacing: 3) {
                 Text("IHaveAlreadySeenIt").font(.title.bold())
-                Text(L10n.text("app.subtitle")).foregroundStyle(.secondary)
             }
             Spacer()
             Menu {
@@ -76,12 +75,16 @@ struct ContentView: View {
                 Divider()
                 Button(L10n.text("action.copyDiagnostics"), systemImage: "doc.on.doc") { viewModel.copyDiagnostics() }
                     .disabled(viewModel.report == nil)
+                Button(L10n.text("action.requestVersionSupport"), systemImage: "questionmark.bubble") {
+                    viewModel.requestVersionSupport()
+                }
             } label: {
                 Label(L10n.text("menu.more"), systemImage: "ellipsis.circle")
             }
             .menuStyle(.borderlessButton)
             .fixedSize()
         }
+        .padding(.top, 18)
     }
 
     private var hero: some View {
@@ -129,6 +132,23 @@ struct ContentView: View {
                         DetailRow(label: L10n.text("field.backup"), value: backupText(report.backup))
                     }
                 }
+                if !isVerified(report.compatibility) {
+                    Divider()
+                    DetailRow(
+                        label: L10n.text("field.sha256"),
+                        value: report.executableSHA256
+                    )
+                    DetailRow(
+                        label: L10n.text("field.featureMatches"),
+                        value: report.signatureMatches
+                            .sorted { $0.key < $1.key }
+                            .map { "\($0.key)=\($0.value)" }
+                            .joined(separator: ", ")
+                    )
+                    if let profile = report.matchedProfileID {
+                        DetailRow(label: L10n.text("field.profile"), value: profile)
+                    }
+                }
             } else {
                 ContentUnavailableView(
                     L10n.text("empty.title"), systemImage: "shield.lefthalf.filled",
@@ -150,7 +170,13 @@ struct ContentView: View {
     private var onboarding: some View {
         VStack(spacing: 22) {
             Text(L10n.text("onboarding.title")).font(.largeTitle.bold())
-            OnboardingRow(symbol: "checkmark.seal", text: L10n.text("onboarding.support"))
+            OnboardingRow(
+                symbol: "checkmark.seal",
+                text: L10n.format(
+                    "onboarding.support",
+                    CompatibilityRules.builtIn.verifiedSupportSummary
+                )
+            )
             OnboardingRow(symbol: "hand.raised", text: L10n.text("onboarding.privacy"))
             OnboardingRow(symbol: "arrow.counterclockwise", text: L10n.text("onboarding.backup"))
             Button(L10n.text("onboarding.start")) { hasCompletedOnboarding = true }
@@ -214,7 +240,19 @@ struct ContentView: View {
     private var statusTitle: String {
         switch presentation.status { case .readyToInstall: L10n.text("status.ready"); case .installed: L10n.text("status.installed"); case .needsAttention: L10n.text("status.attention"); case .working: L10n.text("status.working") }
     }
-    private var statusDetail: String { L10n.text("status.\(presentation.status == .readyToInstall ? "ready" : presentation.status == .installed ? "installed" : presentation.status == .needsAttention ? "attention" : "working").detail") }
+    private var statusDetail: String {
+        if presentation.status == .needsAttention, let compatibility = viewModel.report?.compatibility {
+            switch compatibility {
+            case .candidate: return L10n.text("status.attention.candidate")
+            case .unknownHash: return L10n.text("status.attention.unknownHash")
+            case .architectureHashMismatch:
+                return L10n.text("status.attention.architectureHashMismatch")
+            case .unsupportedVersion: return L10n.text("status.attention.unsupported")
+            case .supported: break
+            }
+        }
+        return L10n.text("status.\(presentation.status == .readyToInstall ? "ready" : presentation.status == .installed ? "installed" : presentation.status == .needsAttention ? "attention" : "working").detail")
+    }
     private var primaryTitle: String {
         switch presentation.primaryAction { case .install: L10n.text("action.install"); case .restore: L10n.text("action.restore"); case .recheck: L10n.text("action.recheck") }
     }
@@ -226,8 +264,20 @@ struct ContentView: View {
         return Double(index + 1) / Double(InstallationStage.allCases.count)
     }
     private func stageText(_ stage: InstallationStage) -> String { L10n.text("progress.\(stage.rawValue)") }
-    private func compatibilityText(_ value: CompatibilityDiagnostic) -> String { switch value { case .supported: L10n.text("value.supported"); case .unknownHash: L10n.text("value.unknownHash"); case .unsupportedVersion: L10n.text("value.unsupported") } }
+    private func compatibilityText(_ value: CompatibilityDiagnostic) -> String {
+        switch value {
+        case .supported: L10n.text("value.supported")
+        case .candidate: L10n.text("value.candidate")
+        case .unknownHash: L10n.text("value.unknownHash")
+        case .architectureHashMismatch: L10n.text("value.architectureHashMismatch")
+        case .unsupportedVersion: L10n.text("value.unsupported")
+        }
+    }
     private func backupText(_ value: BackupDiagnostic) -> String { switch value { case .present: L10n.text("value.backupPresent"); case .missing: L10n.text("value.backupMissing"); case .invalid: L10n.text("value.backupInvalid") } }
+    private func isVerified(_ value: CompatibilityDiagnostic) -> Bool {
+        if case .supported = value { return true }
+        return false
+    }
 }
 
 private struct CommunityBackground: View {

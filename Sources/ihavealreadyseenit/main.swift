@@ -8,6 +8,7 @@ enum CLICommand: String {
     case install
     case uninstall
     case doctor
+    case verifyVersion = "verify-version"
     case help
 }
 
@@ -74,6 +75,7 @@ func printHelp() {
       ihavealreadyseenit inspect [--app PATH]
       ihavealreadyseenit plan [--app PATH]
       ihavealreadyseenit doctor [--json] [--app PATH]
+      ihavealreadyseenit verify-version [--json] [--app PATH]
       sudo ihavealreadyseenit install --confirm-i-understand [--app PATH]
       sudo ihavealreadyseenit uninstall [--app PATH]
 
@@ -83,6 +85,7 @@ func printHelp() {
       install    Back up, build the hook from source, inject, and re-sign
       uninstall  Restore the complete original app backup
       doctor     Produce a privacy-safe diagnostic report
+      verify-version  Read-only maintainer evidence for a candidate WeChat build
 
     No network access, telemetry, debugger attachment, or message-content collection.
     """)
@@ -92,11 +95,22 @@ func printDiagnosticReport(_ report: DiagnosticReport) {
     print("Application:   \(report.applicationPath)")
     print("Version:       \(report.version) (\(report.build))")
     print("SHA-256:       \(report.executableSHA256)")
+    for architecture in report.architectures {
+        if let digest = report.architectureSHA256[architecture] {
+            print("\(architecture) SHA-256: \(digest)")
+        }
+    }
     print("Architectures: \(report.architectures.joined(separator: ", "))")
     print("Code signature: \(report.codeSignature.displayName)")
     print("Compatibility: \(String(describing: report.compatibility))")
     print("Installation:  \(String(describing: report.installation))")
     print("Backup:        \(report.backup.rawValue)")
+    print("Profile:       \(report.matchedProfileID ?? "none")")
+    if !report.headerSlack.isEmpty {
+        let slack = report.headerSlack.sorted { $0.key < $1.key }
+            .map { "\($0.key)=\($0.value)" }.joined(separator: ", ")
+        print("Header slack:  \(slack)")
+    }
     print("Safe to install: \(report.isSafeToInstall ? "yes" : "no")")
 }
 
@@ -109,8 +123,12 @@ func printReport(_ report: ApplicationReport) {
     switch report.compatibility {
     case .supported(let ruleID):
         print("Compatibility: supported (\(ruleID))")
+    case .candidate(let ruleID):
+        print("Compatibility: BLOCKED - candidate profile requires manual validation (\(ruleID))")
     case .unknownHash(let ruleID):
         print("Compatibility: BLOCKED - executable hash is not known for \(ruleID)")
+    case .architectureHashMismatch(let ruleID):
+        print("Compatibility: BLOCKED - architecture hash mismatch for \(ruleID)")
     case .unsupportedVersion:
         print("Compatibility: BLOCKED - version/build has no local rule")
     }
@@ -161,8 +179,14 @@ func describe(_ error: Error) -> String {
         return "install failed (\(original)) and automatic rollback also failed (\(rollback)); preserve the .IHaveAlreadySeenItBackup folder beside the target app"
     case PatchPlanningError.unsupportedVersion: return "this WeChat version/build is not supported"
     case PatchPlanningError.unknownExecutableHash: return "this WeChat executable hash is not in the local allowlist"
+    case PatchPlanningError.architectureHashMismatch:
+        return "one or more architecture hashes do not match the selected profile"
+    case PatchPlanningError.candidateVersion:
+        return "this profile is a diagnostic candidate and cannot be installed"
     case PatchPlanningError.unsafeSignatureMatches: return "anti-revoke signatures are missing or ambiguous"
     case PatchPlanningError.unsupportedArchitectures: return "both arm64 and x86_64 slices are required"
+    case PatchPlanningError.insufficientHeaderSpace:
+        return "the executable does not have the profile's required Mach-O header space"
     case PatchPlanningError.alreadyInstalled: return "IHaveAlreadySeenIt is already injected"
     case PatchPlanningError.executableChanged: return "the executable changed after inspection; no files were modified"
     case PatchPlanningError.injectionVerificationFailed: return "in-memory injection verification failed"
@@ -221,6 +245,32 @@ do {
             print(try DiagnosticReportEncoder.jsonString(report))
         } else {
             printDiagnosticReport(report)
+        }
+    case .verifyVersion:
+        let report = try VersionVerificationService().report(appURL: options.appURL)
+        if options.jsonOutput {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+            print(String(decoding: try encoder.encode(report), as: UTF8.self))
+        } else {
+            print("Application: \(report.applicationPath)")
+            print("Version: \(report.version) (\(report.build))")
+            print("SHA-256: \(report.executableSHA256)")
+            print("Architectures: \(report.architectures.joined(separator: ", "))")
+            print("Code signature: \(report.codeSignature.displayName)")
+            for architecture in report.architectures {
+                print("\(architecture) SHA-256: \(report.architectureSHA256[architecture] ?? "missing")")
+                print("\(architecture) header slack: \(report.headerSlack[architecture] ?? -1) bytes")
+            }
+            for check in report.profileChecks {
+                let matches = check.signatureMatches
+                    .sorted { $0.key < $1.key }
+                    .map { "\($0.key)=\($0.value)" }
+                    .joined(separator: ", ")
+                print("Profile \(check.ruleID) [\(check.validationStatus.rawValue)]: \(matches)")
+            }
+            print("Candidate ready for manual review: \(report.isCandidateReadyForManualReview ? "yes" : "no")")
+            print("Install allowlist gate: \(report.passesInstallAllowlist ? "pass" : "BLOCKED")")
         }
     case .help:
         break

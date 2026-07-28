@@ -1,4 +1,3 @@
-"app.subtitle" = "安静、透明地守住已经看见的消息";
 "status.ready" = "可以安装";
 "status.installed" = "已启用";
 "status.attention" = "需要处理";
@@ -6,6 +5,10 @@
 "status.ready.detail" = "版本与官方签名验证通过，可以安全进入安装确认。";
 "status.installed.detail" = "防撤回已启用，官方原版备份可随时恢复。";
 "status.attention.detail" = "请检查下方信息；未知版本不会被修改。";
+"status.attention.candidate" = "这是候选版本，只能诊断；完成真实安装与恢复验证前不会修改微信。";
+"status.attention.unknownHash" = "版本号已知，但这个官方构建哈希尚未验证，不会修改任何文件。";
+"status.attention.architectureHashMismatch" = "架构哈希与验证配置不一致，不会修改任何文件。";
+"status.attention.unsupported" = "当前版本尚未验证，不会修改文件；可以复制报告申请适配。";
 "status.working.detail" = "正在执行安全检查，请不要移动或启动微信。";
 "action.install" = "启用防撤回";
 "action.restore" = "恢复原版微信";
@@ -17,6 +20,7 @@
 "action.choose" = "选择微信…";
 "action.plan" = "查看安装计划";
 "action.copyDiagnostics" = "复制诊断报告";
+"action.requestVersionSupport" = "申请适配此版本";
 "action.copyTerminal" = "复制命令并打开终端";
 "action.doneRecheck" = "完成后重新检测";
 "menu.more" = "更多操作";
@@ -27,8 +31,13 @@
 "field.signature" = "官方签名";
 "field.compatibility" = "兼容性";
 "field.backup" = "原版备份";
+"field.sha256" = "SHA-256";
+"field.featureMatches" = "特征命中";
+"field.profile" = "匹配配置";
 "value.supported" = "已验证";
 "value.unknownHash" = "哈希未知";
+"value.candidate" = "候选版本（仅诊断）";
+"value.architectureHashMismatch" = "架构哈希不匹配";
 "value.unsupported" = "不支持";
 "value.backupPresent" = "可用";
 "value.backupMissing" = "尚无";
@@ -44,7 +53,7 @@
 "admin.detail" = "应用不会索取或保存密码。请复制下面的固定命令，在终端中确认后输入 macOS 密码。";
 "admin.command" = "将要执行的命令";
 "onboarding.title" = "先了解三件事";
-"onboarding.support" = "仅支持已严格验证的微信 4.1.7 (34371)";
+"onboarding.support" = "严格验证的微信版本：%@";
 "onboarding.privacy" = "不读取聊天内容，不联网，不含遥测";
 "onboarding.backup" = "修改前完整备份，失败时自动回滚";
 "onboarding.start" = "开始检查";

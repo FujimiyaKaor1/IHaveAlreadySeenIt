@@ -1,4 +1,6 @@
-.PHONY: build test coverage app dmg install-local inspect plan doctor clean
+.PHONY: build test coverage app dmg install-local inspect plan doctor verify-version clean
+
+APP ?= /Applications/WeChat.app
 
 build:
 	swift build -c release
@@ -26,6 +28,9 @@ plan:
 
 doctor:
 	swift run ihavealreadyseenit doctor
+
+verify-version:
+	swift run ihavealreadyseenit verify-version --app "$(APP)"
 
 clean:
 	swift package clean

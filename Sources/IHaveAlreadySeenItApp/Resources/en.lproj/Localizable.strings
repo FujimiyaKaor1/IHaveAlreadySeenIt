@@ -1,4 +1,3 @@
-"app.subtitle" = "Quietly and transparently protect messages you have already seen";
 "status.ready" = "Ready to install";
 "status.installed" = "Enabled";
 "status.attention" = "Needs attention";
@@ -6,6 +5,10 @@
 "status.ready.detail" = "The version and official signature passed verification. You can review the install confirmation.";
 "status.installed.detail" = "Anti-revoke is enabled and the official backup is ready to restore.";
 "status.attention.detail" = "Review the details below. Unknown versions are never modified.";
+"status.attention.candidate" = "This candidate is diagnostic-only until real install and restore validation is complete.";
+"status.attention.unknownHash" = "The version is known, but this official build hash is unverified. No files will be changed.";
+"status.attention.architectureHashMismatch" = "Architecture hashes differ from the verified profile. No files will be changed.";
+"status.attention.unsupported" = "This version is unverified and will not be modified. Copy the report to request support.";
 "status.working.detail" = "Safety checks are running. Do not move or launch WeChat.";
 "action.install" = "Enable Anti-Revoke";
 "action.restore" = "Restore Original WeChat";
@@ -17,6 +20,7 @@
 "action.choose" = "Choose WeChat…";
 "action.plan" = "View Installation Plan";
 "action.copyDiagnostics" = "Copy Diagnostic Report";
+"action.requestVersionSupport" = "Request Version Support";
 "action.copyTerminal" = "Copy Command and Open Terminal";
 "action.doneRecheck" = "Check Again When Finished";
 "menu.more" = "More Actions";
@@ -27,8 +31,13 @@
 "field.signature" = "Official signature";
 "field.compatibility" = "Compatibility";
 "field.backup" = "Original backup";
+"field.sha256" = "SHA-256";
+"field.featureMatches" = "Feature matches";
+"field.profile" = "Matched profile";
 "value.supported" = "Verified";
 "value.unknownHash" = "Unknown hash";
+"value.candidate" = "Candidate (diagnostic only)";
+"value.architectureHashMismatch" = "Architecture hash mismatch";
 "value.unsupported" = "Unsupported";
 "value.backupPresent" = "Available";
 "value.backupMissing" = "Not created";
@@ -44,7 +53,7 @@
 "admin.detail" = "The app never requests or stores your password. Review the fixed command in Terminal, then enter your macOS password there.";
 "admin.command" = "Command to run";
 "onboarding.title" = "Three things to know";
-"onboarding.support" = "Only strictly verified WeChat 4.1.7 (34371) is supported";
+"onboarding.support" = "Strictly verified WeChat versions: %@";
 "onboarding.privacy" = "No chat access, network requests, or telemetry";
 "onboarding.backup" = "Complete backup before changes and automatic rollback on failure";
 "onboarding.start" = "Start Check";

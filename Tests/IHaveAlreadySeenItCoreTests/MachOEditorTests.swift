@@ -49,23 +49,88 @@ import Testing
         #expect(report[.arm64] == 2)
         #expect(!report.isSafeToPatch)
     }
+
+    @Test
+    func rejectsMissingOrDuplicateSignaturesInEitherArchitecture() throws {
+        let missingArm = try SignatureScanner.scan(
+            MachOFixture.universalBinary(includePatterns: true, omitArmPattern: true),
+            signatures: .antiRevoke
+        )
+        #expect(missingArm[.arm64] == 0)
+        #expect(missingArm[.x86_64] == 1)
+        #expect(!missingArm.isSafeToPatch)
+
+        let missingX86 = try SignatureScanner.scan(
+            MachOFixture.universalBinary(includePatterns: true, omitX86Pattern: true),
+            signatures: .antiRevoke
+        )
+        #expect(missingX86[.arm64] == 1)
+        #expect(missingX86[.x86_64] == 0)
+        #expect(!missingX86.isSafeToPatch)
+
+        let duplicateX86 = try SignatureScanner.scan(
+            MachOFixture.universalBinary(includePatterns: true, duplicateX86Pattern: true),
+            signatures: .antiRevoke
+        )
+        #expect(duplicateX86[.arm64] == 1)
+        #expect(duplicateX86[.x86_64] == 2)
+        #expect(!duplicateX86.isSafeToPatch)
+    }
+
+    @Test
+    func reportsArchitectureDigestsAndHeaderSlack() throws {
+        let fixture = MachOFixture.universalBinary(headerSlack: 640)
+
+        let digests = try MachOAnalyzer.architectureSHA256(in: fixture)
+        let inspection = try MachOEditor.inspect(fixture, dylibPath: dylibPath)
+
+        #expect(Set(digests.keys) == Set([.arm64, .x86_64]))
+        #expect(digests.values.allSatisfy { $0.count == 64 })
+        #expect(digests[.arm64] != digests[.x86_64])
+        #expect(inspection.headerSlack[.arm64] == 640)
+        #expect(inspection.headerSlack[.x86_64] == 640)
+    }
+
+    @Test
+    func rejectsUniversalBinaryWithDuplicateArchitectureEntries() {
+        var fixture = MachOFixture.universalBinary()
+        fixture.writeUInt32BE(0x0100_0007, at: 28)
+
+        #expect(throws: MachOError.malformedBinary) {
+            try MachOAnalyzer.architectureSHA256(in: fixture)
+        }
+    }
+
+    @Test
+    func rejectsUniversalBinaryWithOverlappingSlices() {
+        var fixture = MachOFixture.universalBinary()
+        fixture.writeUInt32BE(0x4000, at: 36)
+
+        #expect(throws: MachOError.malformedBinary) {
+            try MachOEditor.inspect(fixture, dylibPath: dylibPath)
+        }
+    }
 }
 
 enum MachOFixture {
     static func universalBinary(
         headerSlack: Int = 512,
         includePatterns: Bool = false,
-        duplicateArmPattern: Bool = false
+        duplicateArmPattern: Bool = false,
+        duplicateX86Pattern: Bool = false,
+        omitArmPattern: Bool = false,
+        omitX86Pattern: Bool = false,
+        signatures: SignatureSet = .antiRevoke
     ) -> Data {
         let x86 = thinBinary(
             cpuType: 0x0100_0007,
-            pattern: includePatterns ? AntiRevokeSignatures.x86_64 : nil,
-            duplicatePattern: false,
+            pattern: includePatterns && !omitX86Pattern ? signatures.x86_64 : nil,
+            duplicatePattern: duplicateX86Pattern,
             headerSlack: headerSlack
         )
         let arm = thinBinary(
             cpuType: 0x0100_000C,
-            pattern: includePatterns ? AntiRevokeSignatures.arm64 : nil,
+            pattern: includePatterns && !omitArmPattern ? signatures.arm64 : nil,
             duplicatePattern: duplicateArmPattern,
             headerSlack: max(headerSlack, 512)
         )

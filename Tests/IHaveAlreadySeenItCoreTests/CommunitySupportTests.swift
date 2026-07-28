@@ -132,6 +132,30 @@ import Testing
         #expect(!englishHasEmptyValue)
     }
 
+    @Test
+    func readmeSupportMatrixExactlyMatchesVerifiedProfiles() throws {
+        let repository = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let readme = try String(
+            contentsOf: repository.appendingPathComponent("README.md"),
+            encoding: .utf8
+        )
+        let actualRows = readme.split(separator: "\n").map(String.init).filter {
+            $0.hasPrefix("| ") && !$0.contains("微信版本") && !$0.contains("---")
+        }
+        let expectedRows = CompatibilityRules.builtIn.rules
+            .filter { $0.validationStatus == .verified }
+            .map { rule in
+                let architectures = rule.supportedArchitectures.map(\.rawValue).sorted()
+                    .joined(separator: " + ")
+                let hashes = rule.executableSHA256.sorted().map { "`\($0)`" }
+                    .joined(separator: "<br>")
+                return "| \(rule.version.description) | \(rule.build) | \(architectures) | \(hashes) | 已验证 |"
+            }
+
+        #expect(actualRows == expectedRows)
+    }
+
     private func report(
         signature: CodeSignatureStatus = .official(teamIdentifier: "5A4RE8SF68"),
         compatibility: CompatibilityDiagnostic = .supported(ruleID: "fixture"),

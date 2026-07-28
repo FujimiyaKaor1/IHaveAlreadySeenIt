@@ -25,6 +25,7 @@ public enum MachOError: Error, Equatable, Sendable {
 public struct MachOInspection: Equatable, Sendable {
     public let architectures: Set<MachOArchitecture>
     public let slicesContainingDylib: Set<MachOArchitecture>
+    public let headerSlack: [MachOArchitecture: Int]
 }
 
 public enum MachOEditor {
@@ -33,13 +34,27 @@ public enum MachOEditor {
     public static func inspect(_ data: Data, dylibPath: String) throws -> MachOInspection {
         let slices = try MachOParser.slices(in: data)
         var containing = Set<MachOArchitecture>()
+        var headerSlack: [MachOArchitecture: Int] = [:]
         for slice in slices where try containsDylib(path: dylibPath, in: data, slice: slice) {
             containing.insert(slice.architecture)
         }
+        for slice in slices {
+            let header = try MachOParser.header(in: data, slice: slice)
+            let firstSectionOffset = try MachOParser.firstSectionOffset(in: data, slice: slice)
+            headerSlack[slice.architecture] = firstSectionOffset - 32 - Int(header.sizeOfCommands)
+        }
         return MachOInspection(
             architectures: Set(slices.map(\.architecture)),
-            slicesContainingDylib: containing
+            slicesContainingDylib: containing,
+            headerSlack: headerSlack
         )
+    }
+
+    public static func requiredLoadCommandSpace(path: String) throws -> Int {
+        guard !path.isEmpty, !path.utf8.contains(0) else {
+            throw MachOError.invalidDylibPath
+        }
+        return makeDylibCommand(path: path).count
     }
 
     public static func injectLoadDylib(path: String, into source: Data) throws -> Data {
@@ -116,6 +131,18 @@ public enum MachOEditor {
     }
 }
 
+public enum MachOAnalyzer {
+    public static func architectureSHA256(
+        in data: Data
+    ) throws -> [MachOArchitecture: String] {
+        let slices = try MachOParser.slices(in: data)
+        return Dictionary(uniqueKeysWithValues: slices.map { slice in
+            let bytes = data.subdata(in: slice.offset..<slice.end)
+            return (slice.architecture, SHA256Digest.hex(of: bytes))
+        })
+    }
+}
+
 public enum AntiRevokeSignatures {
     public static let arm64 = Data([
         0x08, 0x0C, 0x40, 0xB9,
@@ -132,9 +159,14 @@ public enum AntiRevokeSignatures {
     ])
 }
 
-public struct SignatureSet: Sendable {
+public struct SignatureSet: Equatable, Sendable {
     public let arm64: Data
     public let x86_64: Data
+
+    public init(arm64: Data, x86_64: Data) {
+        self.arm64 = arm64
+        self.x86_64 = x86_64
+    }
 
     public static let antiRevoke = SignatureSet(
         arm64: AntiRevokeSignatures.arm64,
@@ -188,10 +220,11 @@ private enum MachOParser {
         let bigEndianMagic = try data.readUInt32BE(at: 0)
         if bigEndianMagic == 0xCAFE_BABE {
             let count = Int(try data.readUInt32BE(at: 4))
-            guard count > 0, data.count >= 8 + count * 20 else {
+            let tableEnd = 8 + count * 20
+            guard count > 0, data.count >= tableEnd else {
                 throw MachOError.malformedBinary
             }
-            return try (0..<count).map { index in
+            let slices = try (0..<count).map { index in
                 let entryOffset = 8 + index * 20
                 let cpuType = try data.readUInt32BE(at: entryOffset)
                 guard let architecture = MachOArchitecture(cpuType: cpuType) else {
@@ -199,11 +232,21 @@ private enum MachOParser {
                 }
                 let offset = Int(try data.readUInt32BE(at: entryOffset + 8))
                 let size = Int(try data.readUInt32BE(at: entryOffset + 12))
-                guard offset >= 0, size >= 32, offset + size <= data.count else {
+                guard offset >= tableEnd, size >= 32, offset + size <= data.count else {
                     throw MachOError.malformedBinary
                 }
                 return MachOSlice(architecture: architecture, offset: offset, size: size)
             }
+            guard Set(slices.map(\.architecture)).count == slices.count else {
+                throw MachOError.malformedBinary
+            }
+            let ordered = slices.sorted { $0.offset < $1.offset }
+            guard zip(ordered, ordered.dropFirst()).allSatisfy({ pair in
+                pair.0.end <= pair.1.offset
+            }) else {
+                throw MachOError.malformedBinary
+            }
+            return slices
         }
 
         let littleEndianMagic = try data.readUInt32LE(at: 0)

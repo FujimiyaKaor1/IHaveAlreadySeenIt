@@ -2,7 +2,9 @@ import Foundation
 
 public enum CompatibilityDiagnostic: Codable, Equatable, Sendable {
     case supported(ruleID: String)
+    case candidate(ruleID: String)
     case unknownHash(ruleID: String)
+    case architectureHashMismatch(ruleID: String)
     case unsupportedVersion
 }
 
@@ -45,8 +47,13 @@ public struct DiagnosticReport: Codable, Equatable, Sendable {
     public let version: String
     public let build: String
     public let executableSHA256: String
+    public let architectureSHA256: [String: String]
     public let architectures: [String]
     public let signatureMatches: [String: Int]
+    public let headerSlack: [String: Int]
+    public let matchedProfileID: String?
+    public let profileStatus: CompatibilityValidationStatus?
+    public let profileSafetyPassed: Bool?
     public let codeSignature: CodeSignatureStatus
     public let compatibility: CompatibilityDiagnostic
     public let installation: InstallationDiagnostic
@@ -57,8 +64,13 @@ public struct DiagnosticReport: Codable, Equatable, Sendable {
         version: String,
         build: String,
         executableSHA256: String,
+        architectureSHA256: [String: String] = [:],
         architectures: [String],
         signatureMatches: [String: Int],
+        headerSlack: [String: Int] = [:],
+        matchedProfileID: String? = nil,
+        profileStatus: CompatibilityValidationStatus? = nil,
+        profileSafetyPassed: Bool? = nil,
         codeSignature: CodeSignatureStatus,
         compatibility: CompatibilityDiagnostic,
         installation: InstallationDiagnostic,
@@ -68,8 +80,13 @@ public struct DiagnosticReport: Codable, Equatable, Sendable {
         self.version = version
         self.build = build
         self.executableSHA256 = executableSHA256
+        self.architectureSHA256 = architectureSHA256
         self.architectures = architectures
         self.signatureMatches = signatureMatches
+        self.headerSlack = headerSlack
+        self.matchedProfileID = matchedProfileID
+        self.profileStatus = profileStatus
+        self.profileSafetyPassed = profileSafetyPassed
         self.codeSignature = codeSignature
         self.compatibility = compatibility
         self.installation = installation
@@ -83,6 +100,7 @@ public struct DiagnosticReport: Codable, Equatable, Sendable {
               backup == .missing else {
             return false
         }
+        if let profileSafetyPassed { return profileSafetyPassed }
         return Set(architectures) == Set(MachOArchitecture.allCases.map(\.rawValue))
             && MachOArchitecture.allCases.allSatisfy { signatureMatches[$0.rawValue] == 1 }
     }
@@ -135,10 +153,19 @@ public struct DiagnosticService: @unchecked Sendable {
             version: inspected.version.description,
             build: inspected.build,
             executableSHA256: inspected.executableSHA256,
+            architectureSHA256: Dictionary(uniqueKeysWithValues: inspected.architectureSHA256.map {
+                ($0.key.rawValue, $0.value)
+            }),
             architectures: architectures,
             signatureMatches: Dictionary(uniqueKeysWithValues: MachOArchitecture.allCases.map {
                 ($0.rawValue, inspected.signatureScan[$0] ?? 0)
             }),
+            headerSlack: Dictionary(uniqueKeysWithValues: inspected.injection.headerSlack.map {
+                ($0.key.rawValue, $0.value)
+            }),
+            matchedProfileID: inspected.compatibilityProfile?.id,
+            profileStatus: inspected.compatibilityProfile?.validationStatus,
+            profileSafetyPassed: inspected.isProfileSafeToPatch,
             codeSignature: try signatureVerifier.status(of: inspected.appURL),
             compatibility: compatibilityDiagnostic(inspected.compatibility),
             installation: installation,
@@ -173,7 +200,10 @@ public struct DiagnosticService: @unchecked Sendable {
     private func compatibilityDiagnostic(_ result: CompatibilityResult) -> CompatibilityDiagnostic {
         switch result {
         case .supported(let ruleID): return .supported(ruleID: ruleID)
+        case .candidate(let ruleID): return .candidate(ruleID: ruleID)
         case .unknownHash(let ruleID): return .unknownHash(ruleID: ruleID)
+        case .architectureHashMismatch(let ruleID):
+            return .architectureHashMismatch(ruleID: ruleID)
         case .unsupportedVersion: return .unsupportedVersion
         }
     }

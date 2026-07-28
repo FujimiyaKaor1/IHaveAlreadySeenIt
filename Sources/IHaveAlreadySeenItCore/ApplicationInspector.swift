@@ -22,9 +22,23 @@ public struct ApplicationReport: Sendable {
     public let version: Version
     public let build: String
     public let executableSHA256: String
+    public let architectureSHA256: [MachOArchitecture: String]
     public let compatibility: CompatibilityResult
+    public let compatibilityProfile: CompatibilityRule?
     public let signatureScan: SignatureScanReport
     public let injection: MachOInspection
+
+    public var isProfileSafeToPatch: Bool {
+        guard case .supported = compatibility,
+              let compatibilityProfile,
+              injection.architectures == compatibilityProfile.supportedArchitectures,
+              compatibilityProfile.supportedArchitectures.allSatisfy({ architecture in
+                  (injection.headerSlack[architecture] ?? -1) >= compatibilityProfile.minimumHeaderSlack
+              }) else {
+            return false
+        }
+        return signatureScan.isSafeToPatch
+    }
 }
 
 public struct ApplicationInspector: Sendable {
@@ -74,6 +88,12 @@ public struct ApplicationInspector: Sendable {
         let executableData = try Data(contentsOf: executableURL, options: .mappedIfSafe)
         let version = try Version(rawVersion)
         let digest = SHA256Digest.hex(of: executableData)
+        let architectureDigests = try MachOAnalyzer.architectureSHA256(in: executableData)
+        let profile = compatibilityRules.rule(version: version, build: rawBuild)
+        let inspection = try MachOEditor.inspect(
+            executableData,
+            dylibPath: Self.defaultDylibPath
+        )
         return ApplicationReport(
             appURL: appURL,
             executableURL: executableURL,
@@ -81,13 +101,19 @@ public struct ApplicationInspector: Sendable {
             version: version,
             build: rawBuild,
             executableSHA256: digest,
+            architectureSHA256: architectureDigests,
             compatibility: compatibilityRules.evaluate(
                 version: version,
                 build: rawBuild,
-                executableSHA256: digest
+                executableSHA256: digest,
+                architectureSHA256: architectureDigests
             ),
-            signatureScan: try SignatureScanner.scan(executableData, signatures: .antiRevoke),
-            injection: try MachOEditor.inspect(executableData, dylibPath: Self.defaultDylibPath)
+            compatibilityProfile: profile,
+            signatureScan: try SignatureScanner.scan(
+                executableData,
+                signatures: profile?.signatures ?? .antiRevoke
+            ),
+            injection: inspection
         )
     }
 }

@@ -115,6 +115,13 @@ final class AppViewModel {
         NSWorkspace.shared.open(appURL)
     }
 
+    func requestVersionSupport() {
+        guard let url = URL(
+            string: "https://github.com/FujimiyaKaor1/IHaveAlreadySeenIt/issues/new?template=version_support.yml"
+        ) else { return }
+        NSWorkspace.shared.open(url)
+    }
+
     func copyAdministratorCommandAndOpenTerminal() {
         guard let administratorCommand else { return }
         NSPasteboard.general.clearContents()
@@ -233,6 +240,12 @@ final class AppViewModel {
             return L10n.isSimplifiedChinese ? "当前微信版本尚未经过验证，不会修改任何文件。" : "This WeChat version has not been verified. No files were changed."
         case PatchPlanningError.unknownExecutableHash:
             return L10n.isSimplifiedChinese ? "当前微信可执行文件哈希未知，不会修改任何文件。" : "This WeChat executable hash is unknown. No files were changed."
+        case PatchPlanningError.architectureHashMismatch:
+            return L10n.isSimplifiedChinese ? "微信的架构哈希与验证配置不一致，不会修改任何文件。" : "The architecture hashes do not match the verified profile. No files were changed."
+        case PatchPlanningError.candidateVersion:
+            return L10n.isSimplifiedChinese ? "这是候选版本，只能诊断，完成真实安装与恢复验证前不能安装。" : "This is a diagnostic-only candidate and cannot be installed before real install and restore validation."
+        case PatchPlanningError.insufficientHeaderSpace:
+            return L10n.isSimplifiedChinese ? "微信主程序没有足够的安全注入空间，不会修改任何文件。" : "The executable lacks the required safe injection space. No files were changed."
         case InstallationServiceError.weChatIsRunning:
             return L10n.isSimplifiedChinese ? "微信仍在运行。请正常退出后重试；工具不会强制结束微信。" : "WeChat is still running. Quit it normally and try again; the tool will not force quit it."
         default:
