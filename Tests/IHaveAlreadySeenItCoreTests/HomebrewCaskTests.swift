@@ -2,19 +2,13 @@ import Foundation
 import Testing
 
 @Suite struct HomebrewCaskTests {
-    private let publishedVersion = "1.0.1"
-    private let publishedSHA256 = "7e1f2556dd6c0c5614eb338fb568d2dee998d3d433d757e5d2b9ca62049e3094"
-
     @Test
     func shippedCaskPinsThePublishedReleaseWithoutBypassingGatekeeper() throws {
-        let cask = try String(
-            contentsOf: repositoryRoot
-                .appendingPathComponent("Casks/ihavealreadyseenit.rb"),
-            encoding: .utf8
-        )
+        let cask = try reviewedCask()
+        let metadata = try caskMetadata(from: cask)
 
-        #expect(cask.contains("version \"\(publishedVersion)\""))
-        #expect(cask.contains("sha256 \"\(publishedSHA256)\""))
+        #expect(cask.contains("version \"\(metadata.version)\""))
+        #expect(cask.contains("sha256 \"\(metadata.sha256)\""))
         #expect(cask.contains(
             "releases/download/v#{version}/IHaveAlreadySeenIt-#{version}-Community.dmg"
         ))
@@ -35,17 +29,17 @@ import Testing
         try FileManager.default.createDirectory(at: temporary, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: temporary) }
         let output = temporary.appendingPathComponent("ihavealreadyseenit.rb")
+        let metadata = try caskMetadata(from: reviewedCask())
 
         let result = try runRenderer(
-            version: publishedVersion,
-            sha256: publishedSHA256,
+            version: metadata.version,
+            sha256: metadata.sha256,
             output: output
         )
 
         #expect(result.status == 0)
         let rendered = try Data(contentsOf: output)
-        let reviewed = try Data(contentsOf: repositoryRoot
-            .appendingPathComponent("Casks/ihavealreadyseenit.rb"))
+        let reviewed = try Data(contentsOf: repositoryRoot.appendingPathComponent("Casks/ihavealreadyseenit.rb"))
         #expect(rendered == reviewed)
     }
 
@@ -182,6 +176,21 @@ import Testing
             contentsOf: repositoryRoot.appendingPathComponent(relativePath),
             encoding: .utf8
         )
+    }
+
+    private func reviewedCask() throws -> String {
+        try contents("Casks/ihavealreadyseenit.rb")
+    }
+
+    private func caskMetadata(from cask: String) throws -> (version: String, sha256: String) {
+        let lines = cask.split(whereSeparator: \.isNewline).map(String.init)
+        guard let versionLine = lines.first(where: { $0.trimmingCharacters(in: .whitespaces).hasPrefix("version ") }),
+              let shaLine = lines.first(where: { $0.trimmingCharacters(in: .whitespaces).hasPrefix("sha256 ") }),
+              let version = versionLine.split(separator: "\"").dropFirst().first,
+              let sha256 = shaLine.split(separator: "\"").dropFirst().first else {
+            throw NSError(domain: "HomebrewCaskTests", code: 1)
+        }
+        return (String(version), String(sha256))
     }
 
     private func runRenderer(
