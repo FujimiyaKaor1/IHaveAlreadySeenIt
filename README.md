@@ -1,25 +1,50 @@
 # IHaveAlreadySeenIt
 
-IHaveAlreadySeenIt 是一个免费、开源、仅在本机运行的 macOS 微信防撤回补丁管理器。Community 1.0 提供面向普通用户的 SwiftUI 图形界面，同时保留可审计 CLI、严格版本白名单、完整备份与事务回滚。
+IHaveAlreadySeenIt 是一个免费、开源、仅在本机运行的 macOS 微信防撤回工具。它提供面向普通用户的图形界面，在修改微信前检查官方签名和精确版本，自动保存完整原版备份，并在失败时回滚。
 
-> 它不是微信官方插件。修改客户端可能产生兼容性、更新或账号风险，请在理解风险后自行决定是否使用。
-
-## 下载与首次打开
-
-Community Build 只通过 GitHub Releases 提供 DMG、源码和 SHA-256，不使用 App Store、Homebrew、Apple Developer Program 或公证。
-
-1. 下载 `IHaveAlreadySeenIt-1.0.0-Community.dmg` 并核对 SHA-256。
-2. 将 App 拖入 Applications。
-3. 第一次启动时，在 Finder 中右键 App，选择“打开”。
-4. 按首页唯一的主按钮操作；如果 `/Applications` 需要管理员权限，GUI 会复制固定命令并打开终端，由你检查后输入 macOS 密码。
-
-不要关闭 Gatekeeper 或 SIP，不要执行 `xattr` 绕过命令，也不要运行 `curl | sh` 一类远程脚本。
-
-## 界面
+项目不读取聊天内容、联系人或账号信息，不包含遥测、自动上传和后台自动修改。它不是微信官方插件；修改客户端仍可能带来兼容性、更新或账号风险，请在理解风险后使用。
 
 ![IHaveAlreadySeenIt Community 界面](Documentation/community-1.0.png)
 
-GUI 支持简体中文和英文，会跟随系统语言。浅色、深色、降低透明度、高对比度与减少动态效果均使用系统无障碍设置。
+## 适合谁使用
+
+- 使用 macOS 14 或更高版本。
+- 安装了下方支持矩阵中的官方微信版本。
+- 接受 Community Build 未经 Apple 公证、首次需要右键打开。
+- 希望随时通过 GUI 恢复完整官方原版微信。
+
+不在支持矩阵中的版本只会显示诊断信息，工具不会尝试注入或模糊匹配。
+
+## 下载
+
+请只从本仓库的 [GitHub Releases](https://github.com/FujimiyaKaor1/IHaveAlreadySeenIt/releases/latest) 下载：
+
+- `IHaveAlreadySeenIt-<版本>-Community.dmg`：图形界面安装包。
+- `IHaveAlreadySeenIt-<版本>-Community.dmg.sha256`：安装包校验和。
+- Source code：供审计和自行构建的源码。
+
+项目不通过 App Store、Homebrew 或第三方网盘分发。不要运行来源不明的重新打包版本，也不要执行 `curl | sh`、关闭 Gatekeeper/SIP 或使用 `xattr` 绕过系统保护。
+
+可在终端核对下载文件：
+
+```bash
+cd ~/Downloads
+shasum -a 256 -c IHaveAlreadySeenIt-*-Community.dmg.sha256
+```
+
+输出 `OK` 后再打开 DMG。
+
+## 安装与部署
+
+1. 打开下载的 DMG，将 `IHaveAlreadySeenIt.app` 拖入 `Applications`。
+2. 第一次启动时，在 Finder 的“应用程序”中右键该 App，选择“打开”，再确认一次。
+3. 正常退出微信；工具只会等待微信退出，不会强制结束进程。
+4. 打开 IHaveAlreadySeenIt，确认页面显示的微信路径、版本、官方签名和兼容状态。
+5. 点击首页主按钮，阅读备份、签名变化和账号风险说明后再确认。
+6. 如果 `/Applications` 需要管理员权限，GUI 会显示一条固定命令。选择“复制命令并打开终端”，检查命令后在终端输入 macOS 密码。
+7. 安装成功后点击“启动微信”。需要撤销时重新打开工具，选择“恢复原版微信”。
+
+GUI 不会索取或保存管理员密码。终端命令只能调用当前 App 内嵌的 CLI 执行安装或恢复，路径会经过标准化和严格转义。
 
 ## 支持状态
 
@@ -27,87 +52,65 @@ GUI 支持简体中文和英文，会跟随系统语言。浅色、深色、降�
 |---|---:|---|---|---|
 | 4.1.7 | 34371 | arm64 + x86_64 | `764966cdaaf945bc8b23968bb7b3dca3cdc4067e2891a38e28c7556788e0682c` | 已验证 |
 
-其他版本、Build、哈希或架构会安全拒绝，不进行模糊匹配。增加新版本必须重新提供官方样本证据、双架构唯一特征和安装/恢复验证。
+每个受支持版本都必须精确匹配 Bundle ID、腾讯 Team ID `5A4RE8SF68`、版本、Build、整包与双架构 SHA-256，并保证 arm64、x86_64 特征各命中一次且有足够的 Mach-O 头部空间。候选版本只能诊断，不能安装。
 
-内置规则按版本独立保存整包与架构 SHA-256、arm64/x86_64 特征、架构要求和最小 Mach-O 头部空间。候选规则只能生成诊断，不能安装；默认最多维护最近两个完成真实验证的构建。
+微信更新后，请重新打开本工具检测。旧规则不会自动接受新 Build；在新版本完成真实安装与恢复验证前，拒绝修改属于正常安全行为。
 
-当前规则的可审计验证记录见 [`Documentation/compatibility/wechat-macos-4.1.7-34371.md`](Documentation/compatibility/wechat-macos-4.1.7-34371.md)。
+当前版本的验证记录：[WeChat macOS 4.1.7 (34371)](Documentation/compatibility/wechat-macos-4.1.7-34371.md)。
 
-## 隐私与安全边界
+## 如何反馈
 
-- 不访问网络、无遥测、无自动上传、无自动更新。
-- 不读取聊天数据库、消息正文、联系人或登录账号。
-- 不安装后台常驻项，不附加微信进程。
-- hook 在安装时由本机 `clang` 从仓库中的极小 C 源码编译。
-- Community App 不包含、不安装、不注册 Privileged Helper。
-- 权限不足时仅生成内嵌 CLI 的 `install` 或 `uninstall` 固定命令；路径会标准化并进行严格 shell 转义。
-- 安装前验证 Bundle ID、腾讯 Team ID `5A4RE8SF68`、版本、Build、SHA-256、架构和唯一特征；任一条件不符即停止。
-- 安装事务包含备份、暂存、注入、签名、验证、替换和状态写入；失败时自动回滚。
+### 遇到功能问题
 
-修改后的微信使用 ad-hoc 签名，不再保有腾讯原始代码签名。完整官方备份位于目标 App 旁的 `.IHaveAlreadySeenItBackup`，恢复操作会重新验证该备份。
+1. 在 GUI 的“更多操作”中选择“复制诊断报告”。
+2. 记录可以稳定复现问题的操作步骤、预期结果和实际结果。
+3. 使用 [Bug Report 模板](https://github.com/FujimiyaKaor1/IHaveAlreadySeenIt/issues/new?template=bug_report.yml) 提交。
 
-## 从源码构建
+### 申请适配新的微信版本
 
-要求 macOS 14+ 和 Xcode Command Line Tools：
+1. 打开 GUI 检测当前微信；未知版本不会被修改。
+2. 复制安全诊断报告，记录版本、Build、架构、Team ID、SHA-256 和特征命中数。
+3. 使用 [Version Support 模板](https://github.com/FujimiyaKaor1/IHaveAlreadySeenIt/issues/new?template=version_support.yml) 提交。
+
+反馈时严禁上传以下内容：
+
+- `WeChat.app`、微信主程序或任何微信二进制。
+- `.IHaveAlreadySeenItBackup`、其他备份或 hook 日志。
+- 聊天数据库、消息正文、联系人、账号标识或登录信息。
+- 证书、私钥、密码或其他凭据。
+
+诊断报告只用于判断版本需求，不会让未知版本自动进入安装白名单。常见问题见 [FAQ](FAQ.md)。
+
+## 隐私、安全与恢复
+
+- 无遥测、无自动上传、无自动更新、无后台常驻项。
+- 不读取聊天数据库，不附加正在运行的微信进程。
+- 修改前保存完整官方 App，并记录恢复所需状态。
+- 安装事务包含备份、暂存、注入、签名、验证、替换和状态写入；任一阶段失败都会尝试恢复原版。
+- 修改后的微信采用 ad-hoc 签名，不再保有腾讯原始签名；恢复后会重新验证官方签名和原始 SHA-256。
+- Community 安装包不包含、不安装、不注册 Privileged Helper。
+
+## 从源码部署
+
+开发者需要 macOS 14+、Xcode Command Line Tools 和本仓库源码：
 
 ```bash
-xcode-select --install
+git clone https://github.com/FujimiyaKaor1/IHaveAlreadySeenIt.git
+cd IHaveAlreadySeenIt
 make test
-make coverage
-make app
 make install-local
+```
+
+`make install-local` 只使用本地源码构建、ad-hoc 签名并安装 GUI，不联网下载脚本，也不会自行获取管理员权限。维护者还可以运行：
+
+```bash
+make coverage
+make dmg
 make verify-version APP="/path/to/WeChat.app"
 ```
 
-`make install-local` 只使用本仓库本地源码，不联网下载脚本；它构建 Community App、执行完整 ad-hoc 签名、复制到 `/Applications` 并启动。若当前用户不能写入 `/Applications`，脚本会停止并提示使用 Finder 拖入，不会自行提权。
+贡献新版本规则前请阅读 [CONTRIBUTING.md](CONTRIBUTING.md)；发布流程见 [RELEASING.md](RELEASING.md)。界面素材与授权记录见 [Assets/README.md](Assets/README.md)。
 
-生成 DMG：
+## 许可证
 
-```bash
-make dmg
-```
-
-只读构建仍可显式生成：
-
-```bash
-BUILD_FLAVOR=read-only scripts/package-app.sh
-```
-
-## CLI
-
-发布 App 内的 CLI 位于 `IHaveAlreadySeenIt.app/Contents/Helpers/ihavealreadyseenit`：
-
-```bash
-ihavealreadyseenit inspect --app /Applications/WeChat.app
-ihavealreadyseenit plan --app /Applications/WeChat.app
-ihavealreadyseenit doctor --json --app /Applications/WeChat.app
-ihavealreadyseenit verify-version --json --app /Applications/WeChat.app
-ihavealreadyseenit install --confirm-i-understand --app /Applications/WeChat.app
-ihavealreadyseenit uninstall --app /Applications/WeChat.app
-```
-
-安装和恢复前只请求微信正常退出并等待；进程仍存在则停止，绝不强制结束。
-
-`verify-version` 是维护者只读工具，会输出版本、Build、官方签名、整包和架构哈希、特征命中数与头部空间。它不会修改微信，也不会把候选版本加入安装白名单。
-
-## 项目结构
-
-```text
-Sources/IHaveAlreadySeenItCore/   诊断、安全门、Mach-O 处理与事务安装服务
-Sources/IHaveAlreadySeenItApp/    SwiftUI GUI、本地化与权限降级体验
-Sources/ihavealreadyseenit/       可审计 CLI
-Tests/                            故障注入、安全边界和状态决策测试
-scripts/                          本机构建、图标、DMG 与 Community 发布脚本
-```
-
-未来正式签名版本的 Helper 基础代码目前保留在源码中供审计与研究，但 Community 打包脚本明确禁止将其放入 App。
-
-## 图标授权
-
-界面背景、图标源图、SHA-256 与授权状态见 [`Assets/README.md`](Assets/README.md)。构建脚本从完整正方形原图生成全部 macOS 图标尺寸，并将 4096×3072 背景图压缩为适合窗口显示的版本。图标只用于 Finder、Dock 和应用包，GUI 内容区不重复展示。
-
-## 获取帮助与发布
-
-提交 Issue 前请阅读 [FAQ](FAQ.md)，附上 `doctor --json`，但不要上传聊天数据、账号资料、微信二进制或备份。维护者流程见 [RELEASING.md](RELEASING.md)。Tag 工作流只创建草稿 Release，不读取任何 Apple 凭据。
-
-本项目采用 GPL-3.0 许可，仅用于本地研究和个人选择。使用者需自行遵守适用法律、软件许可和平台规则。
+本项目采用 [GPL-3.0](LICENSE) 许可证，仅用于本地研究和个人选择。使用者需自行遵守适用法律、软件许可和平台规则。
