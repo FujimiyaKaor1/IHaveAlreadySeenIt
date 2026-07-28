@@ -1,6 +1,6 @@
 cask "ihavealreadyseenit" do
-  version "1.0.0"
-  sha256 "56bec80c5810fc953ede9a786154a6939caf11b77e4c0c74f8c4512446c6ac60"
+  version "1.0.1"
+  sha256 "7e1f2556dd6c0c5614eb338fb568d2dee998d3d433d757e5d2b9ca62049e3094"
 
   url "https://github.com/FujimiyaKaor1/IHaveAlreadySeenIt/releases/download/v#{version}/IHaveAlreadySeenIt-#{version}-Community.dmg"
   name "IHaveAlreadySeenIt"
