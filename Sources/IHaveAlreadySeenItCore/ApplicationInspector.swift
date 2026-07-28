@@ -29,7 +29,7 @@ public struct ApplicationReport: Sendable {
 
 public struct ApplicationInspector: Sendable {
     public static let expectedBundleIdentifier = "com.tencent.xinWeChat"
-    public static let defaultDylibPath = "@executable_path/../Resources/WeChatGuardHook.dylib"
+    public static let defaultDylibPath = "@executable_path/../Resources/IHaveAlreadySeenItHook.dylib"
 
     private let compatibilityRules: CompatibilityRules
 

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "https://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>io.github.fujimiyakaor1.IHaveAlreadySeenIt.PrivilegedHelper</string>
+    <key>BundleProgram</key>
+    <string>Contents/Library/LaunchServices/IHaveAlreadySeenItPrivilegedHelper</string>
+    <key>MachServices</key>
+    <dict>
+        <key>io.github.fujimiyakaor1.IHaveAlreadySeenIt.PrivilegedHelper</key>
+        <true/>
+    </dict>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>AUTHORIZED_CLIENT_REQUIREMENT</key>
+        <string>anchor apple generic and identifier "io.github.fujimiyakaor1.IHaveAlreadySeenIt" and certificate leaf[subject.OU] = "__TEAM_ID__"</string>
+    </dict>
+    <key>ProcessType</key>
+    <string>Interactive</string>
+</dict>
+</plist>

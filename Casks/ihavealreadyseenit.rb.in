@@ -1,0 +1,18 @@
+cask "ihavealreadyseenit" do
+  version "__VERSION__"
+  sha256 "__SHA256__"
+
+  url "https://github.com/FujimiyaKaor1/IHaveAlreadySeenIt/releases/download/v#{version}/IHaveAlreadySeenIt-#{version}.app.zip"
+  name "IHaveAlreadySeenIt"
+  desc "Version-locked, auditable macOS WeChat anti-revoke research tool"
+  homepage "https://github.com/FujimiyaKaor1/IHaveAlreadySeenIt"
+
+  depends_on macos: ">= :sonoma"
+
+  app "IHaveAlreadySeenIt.app"
+
+  caveats <<~EOS
+    This tool modifies and ad-hoc re-signs WeChat.app after explicit confirmation.
+    Review the supported-version table and risks before installing a patch.
+  EOS
+end

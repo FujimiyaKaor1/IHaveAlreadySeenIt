@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: swift --version
+      - name: Debug build
+        run: swift build
+      - name: Tests and coverage
+        run: scripts/coverage.sh
+      - name: Release build
+        run: swift build -c release
+      - name: Package unsigned preview
+        run: scripts/package-app.sh
+      - name: Validate package resources
+        run: |
+          plutil -lint dist/IHaveAlreadySeenIt.app/Contents/Info.plist
+          test -f dist/IHaveAlreadySeenIt.app/IHaveAlreadySeenIt_IHaveAlreadySeenItCore.bundle/AntiRevokeHook.c
+          test -f dist/IHaveAlreadySeenIt.app/IHaveAlreadySeenIt_IHaveAlreadySeenItCore.bundle/IHaveAlreadySeenIt.entitlements
+          test ! -e dist/IHaveAlreadySeenIt.app/Contents/Library/LaunchServices/IHaveAlreadySeenItPrivilegedHelper
+          test ! -e dist/IHaveAlreadySeenIt.app/Contents/Library/LaunchDaemons/io.github.fujimiyakaor1.IHaveAlreadySeenIt.PrivilegedHelper.plist
+      - name: Diff and secret checks
+        run: |
+          git diff --check
+          ! git grep -nE '(BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY|sk-[A-Za-z0-9_-]{20,}|api[_-]?key[[:space:]]*=)'

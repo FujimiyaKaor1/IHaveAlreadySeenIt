@@ -27,11 +27,11 @@ static const uint8_t kX86Signature[] = {
 #endif
 
 static void write_log(const char *message) {
-    FILE *file = fopen("/tmp/wechatguard-hook.log", "a");
+    FILE *file = fopen("/tmp/ihavealreadyseenit-hook.log", "a");
     if (file == NULL) {
         return;
     }
-    fprintf(file, "[WeChatGuard] %s\n", message);
+    fprintf(file, "[IHaveAlreadySeenIt] %s\n", message);
     fclose(file);
 }
 
@@ -151,7 +151,7 @@ static int patch_revoke_check(uintptr_t address) {
 }
 
 __attribute__((constructor))
-static void wechatguard_initialize(void) {
+static void ihavealreadyseenit_initialize(void) {
     uintptr_t textStart = 0;
     size_t textSize = 0;
     if (!find_main_text(&textStart, &textSize)) {

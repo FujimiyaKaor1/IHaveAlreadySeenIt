@@ -1,12 +1,13 @@
 import Darwin
 import Foundation
-import WeChatGuardCore
+import IHaveAlreadySeenItCore
 
 enum CLICommand: String {
     case inspect
     case plan
     case install
     case uninstall
+    case doctor
     case help
 }
 
@@ -14,11 +15,13 @@ struct CLIOptions {
     let command: CLICommand
     let appURL: URL
     let acknowledgedRisk: Bool
+    let jsonOutput: Bool
 
     static func parse(_ arguments: [String]) throws -> CLIOptions {
         var command: CLICommand = .inspect
         var appURL = URL(fileURLWithPath: "/Applications/WeChat.app", isDirectory: true)
         var acknowledgedRisk = false
+        var jsonOutput = false
         var index = 0
 
         if let first = arguments.first, !first.hasPrefix("-") {
@@ -37,6 +40,9 @@ struct CLIOptions {
             case "--confirm-i-understand":
                 acknowledgedRisk = true
                 index += 1
+            case "--json":
+                jsonOutput = true
+                index += 1
             case "--help", "-h":
                 command = .help
                 index += 1
@@ -44,7 +50,12 @@ struct CLIOptions {
                 throw CLIError.unknownOption(arguments[index])
             }
         }
-        return CLIOptions(command: command, appURL: appURL.standardizedFileURL, acknowledgedRisk: acknowledgedRisk)
+        return CLIOptions(
+            command: command,
+            appURL: appURL.standardizedFileURL,
+            acknowledgedRisk: acknowledgedRisk,
+            jsonOutput: jsonOutput
+        )
     }
 }
 
@@ -57,22 +68,36 @@ enum CLIError: Error {
 
 func printHelp() {
     print("""
-    WeChatGuard 0.1.0 - local, source-built macOS WeChat anti-revoke tool
+    IHaveAlreadySeenIt 0.2.0 - local, source-built macOS WeChat anti-revoke tool
 
     Usage:
-      wechatguard inspect [--app PATH]
-      wechatguard plan [--app PATH]
-      sudo wechatguard install --confirm-i-understand [--app PATH]
-      sudo wechatguard uninstall [--app PATH]
+      ihavealreadyseenit inspect [--app PATH]
+      ihavealreadyseenit plan [--app PATH]
+      ihavealreadyseenit doctor [--json] [--app PATH]
+      sudo ihavealreadyseenit install --confirm-i-understand [--app PATH]
+      sudo ihavealreadyseenit uninstall [--app PATH]
 
     Commands:
       inspect    Read-only compatibility and installation status
       plan       Read-only list of checks and changes an install would make
       install    Back up, build the hook from source, inject, and re-sign
       uninstall  Restore the complete original app backup
+      doctor     Produce a privacy-safe diagnostic report
 
-    No network access, background service, debugger attachment, or message-content collection.
+    No network access, telemetry, debugger attachment, or message-content collection.
     """)
+}
+
+func printDiagnosticReport(_ report: DiagnosticReport) {
+    print("Application:   \(report.applicationPath)")
+    print("Version:       \(report.version) (\(report.build))")
+    print("SHA-256:       \(report.executableSHA256)")
+    print("Architectures: \(report.architectures.joined(separator: ", "))")
+    print("Code signature: \(report.codeSignature.displayName)")
+    print("Compatibility: \(String(describing: report.compatibility))")
+    print("Installation:  \(String(describing: report.installation))")
+    print("Backup:        \(report.backup.rawValue)")
+    print("Safe to install: \(report.isSafeToInstall ? "yes" : "no")")
 }
 
 func printReport(_ report: ApplicationReport) {
@@ -105,7 +130,7 @@ func printPlan(_ report: ApplicationReport) {
     Install actions:
       1. Refuse to continue unless WeChat is closed and all gates above pass.
       2. Compile a universal hook dylib from the bundled C source.
-      3. Copy the complete original app to /Applications/.WeChatGuardBackup.
+      3. Copy the complete original app to /Applications/.IHaveAlreadySeenItBackup.
       4. Add one LC_LOAD_DYLIB command to both executable slices.
       5. Ad-hoc sign the hook and app with two required entitlements.
       6. Verify the signature and injected load commands; restore backup on failure.
@@ -120,21 +145,25 @@ func describe(_ error: Error) -> String {
     case CLIError.missingValue(let option): return "missing value for \(option)"
     case CLIError.unknownOption(let option): return "unknown option: \(option)"
     case CLIError.riskNotAcknowledged:
-        return "install requires --confirm-i-understand after reviewing `wechatguard plan`"
+        return "install requires --confirm-i-understand after reviewing `ihavealreadyseenit plan`"
     case InstallerError.weChatIsRunning: return "WeChat is running; quit it before install or uninstall"
     case InstallerError.needsPrivileges: return "the app is not writable; rerun the same command with sudo"
     case InstallerError.backupAlreadyExists(let path): return "backup already exists at \(path); inspect or uninstall first"
     case InstallerError.backupMissing(let path): return "original backup is missing at \(path)"
     case InstallerError.resourceMissing(let path): return "bundled build resource is missing: \(path)"
+    case InstallerError.invalidBackupSignature: return "the original backup signature is invalid"
+    case InstallerError.invalidInstallState: return "the backup state file is missing or invalid"
+    case InstallerError.invalidOriginalSignature(let status):
+        return "the selected app is not an untouched official WeChat build: \(status.displayName)"
     case InstallerError.postInstallVerificationFailed: return "post-install load-command verification failed"
     case InstallerError.restoredHashMismatch: return "restored executable hash does not match the original"
     case InstallerError.rollbackFailed(let original, let rollback):
-        return "install failed (\(original)) and automatic rollback also failed (\(rollback)); preserve the .WeChatGuardBackup folder beside the target app"
+        return "install failed (\(original)) and automatic rollback also failed (\(rollback)); preserve the .IHaveAlreadySeenItBackup folder beside the target app"
     case PatchPlanningError.unsupportedVersion: return "this WeChat version/build is not supported"
     case PatchPlanningError.unknownExecutableHash: return "this WeChat executable hash is not in the local allowlist"
     case PatchPlanningError.unsafeSignatureMatches: return "anti-revoke signatures are missing or ambiguous"
     case PatchPlanningError.unsupportedArchitectures: return "both arm64 and x86_64 slices are required"
-    case PatchPlanningError.alreadyInstalled: return "WeChatGuard is already injected"
+    case PatchPlanningError.alreadyInstalled: return "IHaveAlreadySeenIt is already injected"
     case PatchPlanningError.executableChanged: return "the executable changed after inspection; no files were modified"
     case PatchPlanningError.injectionVerificationFailed: return "in-memory injection verification failed"
     case ApplicationInspectionError.appNotFound(let path): return "WeChat app not found: \(path)"
@@ -145,6 +174,14 @@ func describe(_ error: Error) -> String {
     case CommandExecutionError.launchFailed(let message): return message
     case CommandExecutionError.unexpectedExit(let executable, let code, let output):
         return "\(executable) exited with \(code): \(output.trimmingCharacters(in: .whitespacesAndNewlines))"
+    case ApplicationPathValidationError.notAppBundle: return "the selected path is not an .app bundle"
+    case ApplicationPathValidationError.notDirectory: return "the selected app path is not a directory"
+    case ApplicationPathValidationError.symbolicLink: return "symbolic-link app paths are not accepted"
+    case ApplicationPathValidationError.unexpectedOwner: return "the app has an unexpected filesystem owner"
+    case ApplicationPathValidationError.parentNotWritable: return "the app directory requires administrator privileges"
+    case DiskCapacityError.unableToMeasure: return "available disk space could not be measured"
+    case DiskCapacityError.insufficientSpace(let required, let available):
+        return "insufficient disk space (required \(required) bytes, available \(available) bytes)"
     default: return String(describing: error)
     }
 }
@@ -169,21 +206,22 @@ do {
     case .install:
         guard options.acknowledgedRisk else { throw CLIError.riskNotAcknowledged }
         let report = try ApplicationInspector().inspect(appURL: options.appURL)
-        guard let hookSource = Bundle.module.url(forResource: "AntiRevokeHook", withExtension: "c"),
-              let entitlements = Bundle.module.url(forResource: "WeChatGuard", withExtension: "entitlements") else {
-            throw InstallerError.resourceMissing("AntiRevokeHook.c or WeChatGuard.entitlements")
+        try InstallationService.bundled().install(appURL: options.appURL, report: report) { stage in
+            print("[\(stage.rawValue)]")
         }
-        try Installer(hookSourceURL: hookSource, entitlementsURL: entitlements)
-            .install(appURL: options.appURL, report: report)
-        print("Installed successfully. Open WeChat manually and check /tmp/wechatguard-hook.log.")
+        print("Installed successfully. Open WeChat manually and check /tmp/ihavealreadyseenit-hook.log.")
     case .uninstall:
-        guard let hookSource = Bundle.module.url(forResource: "AntiRevokeHook", withExtension: "c"),
-              let entitlements = Bundle.module.url(forResource: "WeChatGuard", withExtension: "entitlements") else {
-            throw InstallerError.resourceMissing("AntiRevokeHook.c or WeChatGuard.entitlements")
+        try InstallationService.bundled().restore(appURL: options.appURL) { stage in
+            print("[\(stage.rawValue)]")
         }
-        try Installer(hookSourceURL: hookSource, entitlementsURL: entitlements)
-            .uninstall(appURL: options.appURL)
         print("Original WeChat.app restored and backup removed.")
+    case .doctor:
+        let report = try DiagnosticService().report(appURL: options.appURL)
+        if options.jsonOutput {
+            print(try DiagnosticReportEncoder.jsonString(report))
+        } else {
+            printDiagnosticReport(report)
+        }
     case .help:
         break
     }

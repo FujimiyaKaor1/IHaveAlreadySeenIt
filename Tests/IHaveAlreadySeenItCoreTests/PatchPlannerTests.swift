@@ -1,8 +1,10 @@
 import Foundation
-import WeChatGuardCore
+import IHaveAlreadySeenItCore
+import Testing
 
-func runPatchPlannerTests() throws {
-    try test("prepares an injectable executable after every safety gate passes") {
+@Suite struct PatchPlannerTests {
+    @Test
+    func testPreparesInjectableExecutableAfterEverySafetyGatePasses() throws {
         let fixture = MachOFixture.universalBinary(includePatterns: true)
         let hash = SHA256Digest.hex(of: fixture)
         let rules = CompatibilityRules(rules: [
@@ -22,21 +24,26 @@ func runPatchPlannerTests() throws {
             patched,
             dylibPath: ApplicationInspector.defaultDylibPath
         )
-        try expect(inspection.slicesContainingDylib == Set([.arm64, .x86_64]))
+        #expect(inspection.slicesContainingDylib == Set([.arm64, .x86_64]))
     }
 
-    try test("refuses to patch an executable with an unknown hash") {
+    @Test
+    func testRefusesUnknownExecutableHash() throws {
         let fixture = MachOFixture.universalBinary(includePatterns: true)
         let app = try makeFixtureApp(executable: fixture)
         defer { try? FileManager.default.removeItem(at: app.deletingLastPathComponent()) }
         let report = try ApplicationInspector().inspect(appURL: app)
 
-        try expectThrows(PatchPlanningError.unknownExecutableHash) {
-            try PatchPlanner.prepareExecutable(fixture, report: report)
+        do {
+            _ = try PatchPlanner.prepareExecutable(fixture, report: report)
+            Issue.record("expected an unknown hash error")
+        } catch {
+            #expect(error as? PatchPlanningError == .unknownExecutableHash)
         }
     }
 
-    try test("refuses to patch when signatures are missing") {
+    @Test
+    func testRefusesWhenSignaturesAreMissing() throws {
         let fixture = MachOFixture.universalBinary(includePatterns: false)
         let hash = SHA256Digest.hex(of: fixture)
         let rules = CompatibilityRules(rules: [
@@ -51,12 +58,16 @@ func runPatchPlannerTests() throws {
         defer { try? FileManager.default.removeItem(at: app.deletingLastPathComponent()) }
         let report = try ApplicationInspector(compatibilityRules: rules).inspect(appURL: app)
 
-        try expectThrows(PatchPlanningError.unsafeSignatureMatches) {
-            try PatchPlanner.prepareExecutable(fixture, report: report)
+        do {
+            _ = try PatchPlanner.prepareExecutable(fixture, report: report)
+            Issue.record("expected an unsafe signature error")
+        } catch {
+            #expect(error as? PatchPlanningError == .unsafeSignatureMatches)
         }
     }
 
-    try test("detects a file change after inspection") {
+    @Test
+    func testDetectsFileChangeAfterInspection() throws {
         let fixture = MachOFixture.universalBinary(includePatterns: true)
         let hash = SHA256Digest.hex(of: fixture)
         let rules = CompatibilityRules(rules: [
@@ -73,15 +84,18 @@ func runPatchPlannerTests() throws {
         var changed = fixture
         changed[changed.count - 1] ^= 0x01
 
-        try expectThrows(PatchPlanningError.executableChanged) {
-            try PatchPlanner.prepareExecutable(changed, report: report)
+        do {
+            _ = try PatchPlanner.prepareExecutable(changed, report: report)
+            Issue.record("expected an executable-changed error")
+        } catch {
+            #expect(error as? PatchPlanningError == .executableChanged)
         }
     }
 }
 
 private func makeFixtureApp(executable: Data) throws -> URL {
     let root = FileManager.default.temporaryDirectory
-        .appendingPathComponent("WeChatGuardPlannerTests-\(UUID().uuidString)", isDirectory: true)
+        .appendingPathComponent("IHaveAlreadySeenItPlannerTests-\(UUID().uuidString)", isDirectory: true)
     let app = root.appendingPathComponent("WeChat.app", isDirectory: true)
     let contents = app.appendingPathComponent("Contents", isDirectory: true)
     let macOS = contents.appendingPathComponent("MacOS", isDirectory: true)

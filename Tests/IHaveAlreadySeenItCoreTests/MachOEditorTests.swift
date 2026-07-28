@@ -1,44 +1,53 @@
 import Foundation
-import WeChatGuardCore
+import IHaveAlreadySeenItCore
+import Testing
 
-func runMachOEditorTests() throws {
-    let dylibPath = "@executable_path/../Resources/WeChatGuardHook.dylib"
+@Suite struct MachOEditorTests {
+    let dylibPath = "@executable_path/../Resources/IHaveAlreadySeenItHook.dylib"
 
-    try test("injects a load command into every universal slice") {
+    @Test
+    func testInjectsLoadCommandIntoEveryUniversalSlice() throws {
         let fixture = MachOFixture.universalBinary()
         let patched = try MachOEditor.injectLoadDylib(path: dylibPath, into: fixture)
         let inspection = try MachOEditor.inspect(patched, dylibPath: dylibPath)
-        try expect(inspection.architectures == Set([.arm64, .x86_64]))
-        try expect(inspection.slicesContainingDylib == Set([.arm64, .x86_64]))
+        #expect(inspection.architectures == Set([.arm64, .x86_64]))
+        #expect(inspection.slicesContainingDylib == Set([.arm64, .x86_64]))
     }
 
-    try test("keeps injection idempotent") {
+    @Test
+    func testKeepsInjectionIdempotent() throws {
         let fixture = MachOFixture.universalBinary()
         let first = try MachOEditor.injectLoadDylib(path: dylibPath, into: fixture)
         let second = try MachOEditor.injectLoadDylib(path: dylibPath, into: first)
-        try expect(first == second)
+        #expect(first == second)
     }
 
-    try test("rejects a Mach-O header without enough slack") {
+    @Test
+    func testRejectsMachOHeaderWithoutEnoughSlack() {
         let fixture = MachOFixture.universalBinary(headerSlack: 0)
-        try expectThrows(MachOError.insufficientHeaderSpace(.x86_64)) {
-            try MachOEditor.injectLoadDylib(path: dylibPath, into: fixture)
+        do {
+            _ = try MachOEditor.injectLoadDylib(path: dylibPath, into: fixture)
+            Issue.record("expected insufficient header space")
+        } catch {
+            #expect(error as? MachOError == .insufficientHeaderSpace(.x86_64))
         }
     }
 
-    try test("requires one signature match per architecture") {
+    @Test
+    func testRequiresOneSignatureMatchPerArchitecture() throws {
         let fixture = MachOFixture.universalBinary(includePatterns: true)
         let report = try SignatureScanner.scan(fixture, signatures: .antiRevoke)
-        try expect(report[.arm64] == 1)
-        try expect(report[.x86_64] == 1)
-        try expect(report.isSafeToPatch)
+        #expect(report[.arm64] == 1)
+        #expect(report[.x86_64] == 1)
+        #expect(report.isSafeToPatch)
     }
 
-    try test("rejects duplicate signature matches") {
+    @Test
+    func testRejectsDuplicateSignatureMatches() throws {
         let fixture = MachOFixture.universalBinary(includePatterns: true, duplicateArmPattern: true)
         let report = try SignatureScanner.scan(fixture, signatures: .antiRevoke)
-        try expect(report[.arm64] == 2)
-        try expect(!report.isSafeToPatch)
+        #expect(report[.arm64] == 2)
+        #expect(!report.isSafeToPatch)
     }
 }
 

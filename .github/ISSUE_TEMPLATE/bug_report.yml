@@ -1,0 +1,28 @@
+name: Bug report
+description: Report a reproducible problem without sharing chat or account data
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Never upload WeChat databases, messages, account identifiers, or the WeChat executable.
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Doctor report
+      description: Paste the output of `ihavealreadyseenit doctor --json`.
+      render: json
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
