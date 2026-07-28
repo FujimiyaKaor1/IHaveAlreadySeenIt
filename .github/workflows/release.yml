@@ -20,6 +20,7 @@ jobs:
         run: |
           export VERSION="${VERSION#v}"
           scripts/release.sh
+          scripts/verify-homebrew-cask.sh dist/Casks/ihavealreadyseenit.rb
       - name: Mount and verify DMG
         env:
           VERSION: ${{ github.ref_name }}
@@ -44,4 +45,5 @@ jobs:
             "dist/IHaveAlreadySeenIt-$VERSION-Community.dmg.sha256" \
             "dist/IHaveAlreadySeenIt-$VERSION-source.tar.gz" \
             "dist/IHaveAlreadySeenIt-$VERSION-source.tar.gz.sha256" \
+            "dist/Casks/ihavealreadyseenit.rb" \
             --draft --generate-notes --verify-tag

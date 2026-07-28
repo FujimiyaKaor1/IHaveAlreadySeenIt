@@ -1,4 +1,4 @@
-.PHONY: build test coverage app dmg install-local inspect plan doctor verify-version clean
+.PHONY: build test coverage app dmg install-local inspect plan doctor verify-version homebrew-audit homebrew-smoke clean
 
 APP ?= /Applications/WeChat.app
 
@@ -31,6 +31,12 @@ doctor:
 
 verify-version:
 	swift run ihavealreadyseenit verify-version --app "$(APP)"
+
+homebrew-audit:
+	scripts/verify-homebrew-cask.sh
+
+homebrew-smoke:
+	scripts/test-homebrew-cask.sh
 
 clean:
 	swift package clean

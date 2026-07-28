@@ -15,15 +15,47 @@ IHaveAlreadySeenIt 是一个免费、开源、仅在本机运行的 macOS 微信
 
 不在支持矩阵中的版本只会显示诊断信息，工具不会尝试注入或模糊匹配。
 
-## 下载
+## 下载与安装
 
-请只从本仓库的 [GitHub Releases](https://github.com/FujimiyaKaor1/IHaveAlreadySeenIt/releases/latest) 下载：
+### Homebrew（推荐）
+
+Homebrew 会自动下载 GitHub Release、核对 SHA-256 并把 App 安装到 Applications：
+
+```bash
+brew tap FujimiyaKaor1/tap
+brew install --cask FujimiyaKaor1/tap/ihavealreadyseenit
+```
+
+使用完整 Cask 名称可以让 Homebrew 只信任这个 Cask，而不是自动信任 Tap 中未来出现的所有软件。
+
+安装完成后，首次启动仍需在 Finder 的“应用程序”中右键 IHaveAlreadySeenIt，选择“打开”并确认。Homebrew 不会绕过 Gatekeeper，也不会代替 GUI 获取管理员权限。
+
+更新工具：
+
+```bash
+brew update
+brew upgrade --cask ihavealreadyseenit
+```
+
+升级只替换管理工具，不会修改微信或删除原版备份。升级后请打开 GUI 重新检测。
+
+卸载前必须先恢复原版微信：请在 GUI 中选择“恢复原版微信”，确认完成后再执行：
+
+```bash
+brew uninstall --cask ihavealreadyseenit
+```
+
+Homebrew 只移除 IHaveAlreadySeenIt，不会自动恢复已经修改的微信。
+
+### 手动下载 DMG
+
+也可以从本仓库的 [GitHub Releases](https://github.com/FujimiyaKaor1/IHaveAlreadySeenIt/releases/latest) 下载：
 
 - `IHaveAlreadySeenIt-<版本>-Community.dmg`：图形界面安装包。
 - `IHaveAlreadySeenIt-<版本>-Community.dmg.sha256`：安装包校验和。
 - Source code：供审计和自行构建的源码。
 
-项目不通过 App Store、Homebrew 或第三方网盘分发。不要运行来源不明的重新打包版本，也不要执行 `curl | sh`、关闭 Gatekeeper/SIP 或使用 `xattr` 绕过系统保护。
+项目不通过 App Store 或第三方网盘分发。Homebrew Cask 只允许从本项目的 GitHub Release 下载带固定 SHA-256 的 DMG。不要运行来源不明的重新打包版本，也不要执行 `curl | sh`、关闭 Gatekeeper/SIP 或使用 `xattr` 绕过系统保护。
 
 可在终端核对下载文件：
 

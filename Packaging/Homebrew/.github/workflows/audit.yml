@@ -1,0 +1,32 @@
+name: Audit Casks
+
+on:
+  push:
+    paths:
+      - "Casks/**"
+      - ".github/workflows/audit.yml"
+  pull_request:
+    paths:
+      - "Casks/**"
+      - ".github/workflows/audit.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Style and strict audit
+        run: |
+          brew style Casks/ihavealreadyseenit.rb
+          AUDIT_TAP="ihavealreadyseenit-ci-$$/casks"
+          brew tap-new --no-git "$AUDIT_TAP" >/dev/null
+          trap 'brew untap "$AUDIT_TAP" >/dev/null 2>&1 || true' EXIT
+          AUDIT_REPOSITORY="$(brew --repository "$AUDIT_TAP")"
+          mkdir -p "$AUDIT_REPOSITORY/Casks"
+          install -m 644 Casks/ihavealreadyseenit.rb \
+            "$AUDIT_REPOSITORY/Casks/ihavealreadyseenit.rb"
+          brew audit --cask --strict "$AUDIT_TAP/ihavealreadyseenit"

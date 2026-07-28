@@ -32,6 +32,8 @@ jobs:
           test ! -e dist/IHaveAlreadySeenIt.app/Contents/Library/LaunchServices/IHaveAlreadySeenItPrivilegedHelper
           test ! -e dist/IHaveAlreadySeenIt.app/Contents/Library/LaunchDaemons/io.github.fujimiyakaor1.IHaveAlreadySeenIt.PrivilegedHelper.plist
           codesign --verify --deep --strict --verbose=2 dist/IHaveAlreadySeenIt.app
+      - name: Audit Homebrew Cask
+        run: scripts/verify-homebrew-cask.sh
       - name: Diff and secret checks
         run: |
           git diff --check

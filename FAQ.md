@@ -8,6 +8,17 @@ No. It is an open-source local patch manager. Community 1.0 only supports the ex
 
 The free Community build is ad-hoc signed but not notarized by Apple. macOS therefore requires an explicit first-open decision. Do not disable Gatekeeper or SIP and do not run `xattr` bypass commands.
 
+## Does Homebrew remove the first-open confirmation?
+
+No. Homebrew downloads the same GitHub Release DMG, verifies its pinned SHA-256, and installs
+the App. Gatekeeper still requires Finder → right-click → Open for this non-notarized Community
+build. The Cask does not use `no_quarantine` or any other bypass.
+
+## What should I do before a Homebrew uninstall?
+
+Restore the original WeChat from the GUI first. `brew uninstall --cask ihavealreadyseenit`
+removes this manager only; it does not restore WeChat and does not delete the safety backup.
+
 ## Why does it open Terminal?
 
 Writing beside an app in `/Applications` can require administrator access. The GUI does not collect your password. It copies one fixed, quoted command that can only invoke the CLI embedded inside the same app for install or restore; you review it and enter your password in Terminal.
