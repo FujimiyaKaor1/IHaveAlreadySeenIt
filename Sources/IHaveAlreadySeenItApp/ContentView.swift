@@ -23,7 +23,7 @@ struct ContentView: View {
                 }
                 .padding(28)
             }
-            .safeAreaPadding(.top, 24)
+            .safeAreaPadding(.top, 58)
         }
         .frame(minWidth: 720, minHeight: 600)
         .task { viewModel.refresh() }
@@ -63,13 +63,6 @@ struct ContentView: View {
 
     private var header: some View {
         HStack(spacing: 14) {
-            if let url = Bundle.module.url(forResource: "AppIcon", withExtension: "png"),
-               let image = NSImage(contentsOf: url) {
-                Image(nsImage: image)
-                    .resizable().scaledToFill().frame(width: 66, height: 66)
-                    .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
-                    .shadow(color: .pink.opacity(0.15), radius: 10, y: 4)
-            }
             VStack(alignment: .leading, spacing: 3) {
                 Text("IHaveAlreadySeenIt").font(.title.bold())
                 Text(L10n.text("app.subtitle")).foregroundStyle(.secondary)
@@ -156,10 +149,6 @@ struct ContentView: View {
 
     private var onboarding: some View {
         VStack(spacing: 22) {
-            if let url = Bundle.module.url(forResource: "AppIcon", withExtension: "png"), let image = NSImage(contentsOf: url) {
-                Image(nsImage: image).resizable().scaledToFit().frame(width: 110, height: 110)
-                    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-            }
             Text(L10n.text("onboarding.title")).font(.largeTitle.bold())
             OnboardingRow(symbol: "checkmark.seal", text: L10n.text("onboarding.support"))
             OnboardingRow(symbol: "hand.raised", text: L10n.text("onboarding.privacy"))

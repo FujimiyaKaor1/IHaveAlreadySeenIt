@@ -14,7 +14,7 @@ APP_RESOURCES = ROOT / "Sources" / "IHaveAlreadySeenItApp" / "Resources"
 
 def render_master() -> Image.Image:
     source = Image.open(SOURCE).convert("RGB")
-    # Work from the supplied square artwork and only downsample, never upscale.
+    # Fit the supplied square artwork before generating every required macOS size.
     width, height = source.size
     side = min(width, height)
     left = (width - side) // 2

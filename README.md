@@ -96,7 +96,7 @@ scripts/                          本机构建、图标、DMG 与 Community 发�
 
 ## 图标授权
 
-界面背景、图标源图、SHA-256 与授权状态见 [`Assets/README.md`](Assets/README.md)。构建脚本从正方形原图生成全部 macOS 图标尺寸，并将 4096×3072 背景图压缩为适合窗口显示的版本。动画图标的第三方公开再分发权需要在发布 GitHub Release 前确认。
+界面背景、图标源图、SHA-256 与授权状态见 [`Assets/README.md`](Assets/README.md)。构建脚本从完整正方形原图生成全部 macOS 图标尺寸，并将 4096×3072 背景图压缩为适合窗口显示的版本。图标只用于 Finder、Dock 和应用包，GUI 内容区不重复展示。
 
 ## 获取帮助与发布
 
